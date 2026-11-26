@@ -69,7 +69,8 @@ class DemoEngine:
             ]),
         ]
 
-    def approve(self, approval_id: str, approved_by: str, now: datetime) -> list[OutboundAction]:
+    def approve(self, approval_id: str, approved_by: str, now: datetime,
+                edited_text: str | None = None) -> list[OutboundAction]:
         key = self._pending.pop(approval_id)  # KeyError -> 404 in API
         return [OutboundAction(kind="image", text="Oferta dumneavoastră (exemplu demonstrativ).",
                                image_path=self._image(key))]

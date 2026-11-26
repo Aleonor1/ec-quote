@@ -200,7 +200,8 @@ def test_settings_load_and_hide_secrets(tmp_path):
     env = base_env(tmp_path, **{name: f"valoare-{name}" for name in INTEGRATION_VARS},
                    EC_QUOTE_SIGNING_SECRET="s" * 32, EC_QUOTE_ALLOWED_MIMES="image/png, application/pdf",
                    EC_QUOTE_DEMO="true")
-    settings = load_settings(env)
+    settings = load_settings(dict(env, CRM_BASE_URL="https://crm.test/", CRM_API_SECRET="valoare-CRM_API_SECRET"))
+    assert settings.crm_base_url == "https://crm.test"
     assert settings.demo is True and settings.allowed_mimes == ("image/png", "application/pdf")
     assert settings.cors_origins == (ORIGIN,) and settings.attachment_hosts == ("files.crm.test",)
     assert settings.max_upload_bytes == 1024 * 1024
@@ -316,20 +317,21 @@ def test_main_reports_missing_wiring_clearly(tmp_path):
     assert main.bucharest_now().tzinfo is main.BUCHAREST
 
 
-def test_main_wires_ports_then_engine(tmp_path, monkeypatch):
+def test_main_uses_the_wiring_factory_by_default(tmp_path, monkeypatch):
     settings = load_settings(base_env(tmp_path), require_integrations=False)
     seen = {}
-
-    def fake_load(path):
-        if path == main.ENGINE_FACTORY:
-            return lambda **kwargs: seen.update(kwargs) or "engine"
-        return lambda given: f"port:{path}"
-
-    monkeypatch.setattr(main, "load_object", fake_load)
+    monkeypatch.setattr(main, "load_object", lambda path: lambda **kwargs: seen.update(kwargs, path=path) or "engine")
     assert main.build_engine(settings, main.bucharest_now) == "engine"
-    assert seen["settings"] is settings and seen["clock"] is main.bucharest_now
-    assert {k: v for k, v in seen.items() if k not in ("settings", "clock")} == {
-        name: f"port:{path}" for name, path in main.PORT_FACTORIES.items()}
+    assert seen == {"settings": settings, "clock": main.bucharest_now, "path": "ec_quote.api.wiring:build_engine"}
+
+    def broken(path):
+        def factory(**kwargs):
+            raise ModuleNotFoundError("anthropic")
+        return factory
+
+    monkeypatch.setattr(main, "load_object", broken)
+    with pytest.raises(main.WiringError, match="ModuleNotFoundError"):
+        main.build_engine(settings, main.bucharest_now)
 
 
 def test_main_requires_integration_settings_for_the_real_engine(tmp_path):
@@ -375,3 +377,126 @@ def test_main_app_attribute_builds_the_demo_end_to_end(tmp_path, monkeypatch):
     assert client.post(f"/v1/approvals/{approval}/approve", json={"by": "ana"}, headers=AUTH).status_code == 200
     assert client.get("/v1/chat/poll", headers=headers).json()["actions"][0]["kind"] == "image"
     client.__exit__(None, None, None)  # opreste aplicatia si inchide baza de date
+
+
+def test_crm_is_optional_but_a_crm_url_needs_its_secret(tmp_path):
+    env = base_env(tmp_path, **{name: "x" for name in INTEGRATION_VARS})
+    assert load_settings(env).crm_base_url == ""
+    with pytest.raises(SettingsError, match="CRM_API_SECRET"):
+        load_settings(dict(env, CRM_BASE_URL="https://crm.test"))
+    assert "CRM_BASE_URL" not in INTEGRATION_VARS and "EC_QUOTE_MODEL" not in INTEGRATION_VARS
+
+
+@pytest.mark.parametrize("value", [
+    "ana",                                         # fara token
+    "ana:scurt",                                   # token prea scurt
+    ":token-fara-nume-0123456789abcdef",
+    "ana maria:token-ana-0123456789abcdefghij",    # nume cu spatiu
+    "ana:token-ana-0123456789abcdefghij,ana:token-alt-0123456789abcdefghij",
+    "ana:token-ana-0123456789abcdefghij,ion:token-ana-0123456789abcdefghij",
+])
+def test_assist_tokens_must_be_well_formed_and_unique(tmp_path, value):
+    with pytest.raises(SettingsError) as error:
+        load_settings(base_env(tmp_path, EC_QUOTE_ASSIST_TOKENS=value), require_integrations=False)
+    assert "EC_QUOTE_ASSIST_TOKENS" in str(error.value) and "token-ana" not in str(error.value)
+
+
+def test_assist_tokens_are_parsed_and_hidden(tmp_path):
+    settings = load_settings(base_env(tmp_path), require_integrations=False)
+    assert [name for name, _ in settings.assist_tokens] == ["ana", "mihai"]
+    assert "token-ana" not in repr(settings) + settings.model_dump_json()
+    empty = load_settings(base_env(tmp_path, EC_QUOTE_ASSIST_TOKENS=""), require_integrations=False)
+    assert empty.assist_tokens == ()
+
+
+# ---------- wiring.py: adaptoarele reale, cu module surori false ----------
+
+def _fake_modules(monkeypatch, with_mockup_factory=False):
+    import sys
+    import types
+
+    calls = {}
+
+    def recorder(name):
+        def make(*args, **kwargs):
+            calls[name] = (args, kwargs)
+            return name
+        return make
+
+    pricing = types.SimpleNamespace(CalculatorClient=recorder("pricing"))
+    files = types.SimpleNamespace(FileChecker=recorder("files"))
+    mockup = types.SimpleNamespace(MockupService=recorder("mockup"))
+    if with_mockup_factory:
+        mockup.build_mockup = recorder("mockup_factory")
+    integrations = types.SimpleNamespace(ShopifyCheckout=recorder("checkout"), CrmClient=recorder("crm"),
+                                         DEFAULT_API_VERSION="2026-04")
+    agent = types.SimpleNamespace(
+        AnthropicModel=recorder("model"), build_engine=recorder("engine"),
+        Rules=types.SimpleNamespace(load=recorder("rules")))
+    anthropic = types.SimpleNamespace(Anthropic=recorder("anthropic"))
+    for name, module in (("ec_quote.pricing", pricing), ("ec_quote.files", files), ("ec_quote.mockup", mockup),
+                         ("ec_quote.integrations", integrations), ("ec_quote.agent", agent),
+                         ("anthropic", anthropic)):
+        monkeypatch.setitem(sys.modules, name, module)
+    return calls
+
+
+def test_wiring_builds_the_engine_from_sibling_classes_without_crm(tmp_path, monkeypatch):
+    import httpx
+
+    from ec_quote.api import wiring
+
+    calls = _fake_modules(monkeypatch)
+    env = base_env(tmp_path, CALCULATOR_BASE_URL="https://calc.test/", CALCULATOR_SYNC_SECRET="sync-secret",
+                   ANTHROPIC_API_KEY="sk-test", SHOPIFY_SHOP_DOMAIN="shop.test", SHOPIFY_ADMIN_TOKEN="shpat")
+    settings = load_settings(env)
+    assert wiring.build_engine(settings=settings, clock=main.bucharest_now) == "engine"
+
+    args, kwargs = calls["pricing"]
+    assert args == ("https://calc.test", "sync-secret") and isinstance(kwargs["http"], httpx.Client)
+    assert calls["files"] == ((), {"rules_path": settings.rules_path})
+    assert calls["checkout"][0][:2] == ("shop.test", "shpat") and calls["checkout"][0][3] == "2026-04"
+    assert calls["anthropic"] == ((), {"api_key": "sk-test"})
+    assert calls["model"] == ((), {"client": "anthropic", "model": None})
+    assert calls["rules"] == ((settings.rules_path,), {})
+    assert "crm" not in calls
+    engine_kwargs = calls["engine"][1]
+    assert isinstance(engine_kwargs["crm"], wiring.NoCrm) and engine_kwargs["handoff"] is engine_kwargs["crm"]
+    assert engine_kwargs["pricing"] == "pricing" and engine_kwargs["files"] == "files"
+    assert engine_kwargs["mockup"] == "mockup" and engine_kwargs["checkout"] == "checkout"
+    assert engine_kwargs["model"] == "model" and engine_kwargs["rules"] == "rules"
+    assert engine_kwargs["data_dir"] == settings.data_dir
+    for call_args, call_kwargs in (calls["pricing"], calls["checkout"]):
+        for value in (*call_args, *call_kwargs.values()):
+            if isinstance(value, httpx.Client):
+                value.close()
+
+
+def test_wiring_uses_the_crm_client_and_a_mockup_factory_when_present(tmp_path, monkeypatch):
+    from ec_quote.api import wiring
+
+    calls = _fake_modules(monkeypatch, with_mockup_factory=True)
+    settings = load_settings(base_env(tmp_path, CRM_BASE_URL="https://crm.test", CRM_API_SECRET="crm-secret",
+                                      EC_QUOTE_MODEL="model-x"), require_integrations=False)
+    wiring.build_engine(settings)
+    assert calls["crm"][0][:2] == ("https://crm.test", "crm-secret")
+    assert calls["engine"][1]["crm"] == "crm" and calls["engine"][1]["handoff"] == "crm"
+    assert calls["mockup_factory"] == ((settings,), {}) and "mockup" not in calls
+    assert calls["model"][1]["model"] == "model-x"
+    for name in ("pricing", "checkout", "crm"):
+        for value in (*calls[name][0], *calls[name][1].values()):
+            if hasattr(value, "close"):
+                value.close()
+
+
+def test_no_crm_ports_do_nothing(caplog):
+    from ec_quote.api.wiring import NoCrm
+    from ec_quote.contracts import Contact, HandoffReason
+
+    caplog.set_level(logging.INFO, logger="ec_quote.api")
+    contact = Contact(channel="whatsapp", key=WA_KEY, name="Client Test")
+    crm = NoCrm()
+    assert crm.upsert_lead(contact, "rezumat", None, None, "new") == ""
+    assert crm.handoff(contact, HandoffReason.COMPLAINT, "rezumat privat", main.bucharest_now()) is None
+    text = "\n".join(r.getMessage() for r in caplog.records)
+    assert "reason=complaint" in text and "privat" not in text and WA_KEY not in text

@@ -2,12 +2,15 @@
 
 - CRM-ul trimite mesajele WhatsApp la POST /v1/inbound si livreaza actiunile din raspuns;
 - widgetul de pe site vorbeste cu /v1/chat/* pe baza unui token de sesiune semnat;
-- in mod umbra, omul aproba din CRM prin /v1/approvals/{id}/approve.
+- in mod umbra, omul aproba din CRM prin /v1/approvals/{id}/approve;
+- extensia Chrome de pe WhatsApp Web cere sugestii la /v1/assist/* (un om insereaza si trimite).
 
 Toate dependintele sunt injectate in create_app; adaptoarele reale se construiesc in main.py.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import math
 import os
 import re
@@ -45,22 +48,39 @@ from ec_quote.api.fetcher import (
 from ec_quote.api.logutil import contact_ref, logger, request_id_var
 from ec_quote.api.ratelimit import KeyedLocks, RateLimiter
 from ec_quote.api.schemas import (
+    ASSIST_KEY_PATTERN,
+    ASSIST_MAX_MESSAGES,
+    ASSIST_MAX_TEXT,
     SITE_KEY_PATTERN,
     ApprovalRequest,
+    AssistPaymentLinkRequest,
+    AssistSuggestRequest,
     ChatMessageRequest,
     ChatSessionRequest,
     InboundRequest,
     action_for_crm,
     action_for_site,
+    suggestion_payload,
 )
 from ec_quote.api.security import Signer, TokenError, secrets_equal
 from ec_quote.api.store import ApiStore
 from ec_quote.config import Settings
-from ec_quote.contracts import Attachment, Contact, Engine, InboundMessage, OutboundAction
+from ec_quote.contracts import (
+    AssistEngine,
+    AssistMessage,
+    AssistSuggestion,
+    Attachment,
+    Contact,
+    Engine,
+    InboundMessage,
+    OutboundAction,
+)
 
 STATIC_DIR = Path(__file__).parent / "static"
-UPLOAD_PATH = "/v1/chat/upload"
+UPLOAD_PATHS = ("/v1/chat/upload", "/v1/assist/upload")
+SUGGEST_PATH = "/v1/assist/suggest"
 JSON_BODY_LIMIT = 256 * 1024
+SUGGEST_BODY_LIMIT = 2 * 1024 * 1024  # conversatia vizibila, citita de extensie
 MULTIPART_OVERHEAD = 64 * 1024
 MEDIA_MIMES = ("image/png", "image/jpeg", "image/webp")
 APPROVAL_ID = re.compile(r"[A-Za-z0-9_.:-]{1,128}")
@@ -109,7 +129,9 @@ class RequestContextMiddleware:
         incoming = headers.get(b"x-request-id", b"").decode("latin-1")
         rid = incoming if REQUEST_ID.fullmatch(incoming) else uuid.uuid4().hex[:16]
         token = request_id_var.set(rid)
-        limit = self.upload_limit if scope["path"] == UPLOAD_PATH else JSON_BODY_LIMIT
+        path = scope["path"]
+        limit = (self.upload_limit if path in UPLOAD_PATHS
+                 else SUGGEST_BODY_LIMIT if path == SUGGEST_PATH else JSON_BODY_LIMIT)
         state = {"status": 0, "received": 0}
 
         async def limited_receive():
@@ -159,12 +181,23 @@ def create_app(
     settings: Settings,
     *,
     clock: Callable[[], datetime],
+    assist: AssistEngine | None = None,
     monotonic: Callable[[], float] = time.monotonic,
     http_client: httpx.AsyncClient | None = None,
     resolver: Resolver = system_resolver,
     store: ApiStore | None = None,
 ) -> FastAPI:
-    """clock intoarce ora curenta cu fus orar (Europe/Bucharest in productie)."""
+    """clock intoarce ora curenta cu fus orar (Europe/Bucharest in productie).
+
+    assist: motorul modului asistat. Daca lipseste si `engine` are `suggest` si
+    `create_payment_link`, se foloseste el; altfel rutele de sugestie raspund 503.
+    """
+    assist_engine = assist
+    if assist_engine is None and all(callable(getattr(engine, name, None))
+                                     for name in ("suggest", "create_payment_link")):
+        assist_engine = engine
+    assist_tokens = [(name, token.get_secret_value()) for name, token in settings.assist_tokens]
+    upload_key = settings.signing_key("assist-upload")
     data_root = settings.data_dir.resolve()
     data_root.mkdir(parents=True, exist_ok=True)
     db = store or ApiStore(data_root / "api.sqlite3", clock=lambda: clock().timestamp())
@@ -180,6 +213,7 @@ def create_app(
     limit_session = RateLimiter(settings.rate_messages_per_session_per_minute, 60, monotonic)
     limit_uploads = RateLimiter(settings.rate_uploads_per_session_per_hour, 3600, monotonic)
     limit_polls = RateLimiter(settings.rate_polls_per_session_per_minute, 60, monotonic)
+    limit_assist = RateLimiter(settings.rate_assist_per_token_per_minute, 60, monotonic)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -298,6 +332,42 @@ def create_app(
     def conversation_dir(contact: Contact) -> Path:
         return data_root / "conversations" / contact.channel / contact.key / "inbound"
 
+    async def save_upload(upload: UploadFile, dest: Path) -> tuple[Path, str]:
+        """Scrie fisierul incarcat cu plafon de marime; tipul vine din octetii magici."""
+        dest.mkdir(parents=True, exist_ok=True)
+        tmp = dest / f".{uuid.uuid4().hex}.part"
+        size, head = 0, b""
+        try:
+            with tmp.open("wb") as out:
+                while chunk := await upload.read(64 * 1024):
+                    size += len(chunk)
+                    if size > settings.max_upload_bytes:
+                        raise ApiError(413, "upload_too_large", "Fișierul depășește mărimea maximă.")
+                    if len(head) < SNIFF_BYTES:
+                        head += chunk[:SNIFF_BYTES - len(head)]
+                    out.write(chunk)
+            mime = check_content(head, settings.allowed_mimes)
+            final = dest / f"{uuid.uuid4().hex}{EXTENSIONS.get(mime, '.bin')}"
+            os.replace(tmp, final)
+        finally:
+            tmp.unlink(missing_ok=True)
+        return final, mime
+
+    def decision_failure(exc: Exception, what: str) -> ApiError | None:
+        """Erorile motorului la o decizie a omului: necunoscuta -> 404, nu mai este valabila -> 409.
+
+        ApprovalError vine din modulul agent; il recunoastem dupa nume, fara import.
+        """
+        missing = ApiError(404, f"{what}_not_found", "Nu exista.")
+        if isinstance(exc, LookupError):
+            return missing
+        if type(exc).__name__ == "ApprovalError":
+            reason = str(exc).lower()
+            if "necunoscut" in reason or "nu exista" in reason:
+                return missing
+            return ApiError(409, f"{what}_not_available", "Nu mai poate fi folosita; cereti una noua.")
+        return None
+
     def fetcher() -> AttachmentFetcher:
         client = http_client
         if client is None:
@@ -331,12 +401,11 @@ def create_app(
                     logger.info("inbound duplicate channel=%s contact=%s", contact.channel, ref)
                     return _ACTIONS.validate_json(cached), True
             attachments = await load()
-            fields = dict(contact=contact, text=text, button_id=button_id, attachments=attachments,
-                          received_at=received_at, from_staff=from_staff)
-            if message_id and "message_id" in InboundMessage.model_fields:
-                fields["message_id"] = message_id  # cand contractul capata campul, il trecem mai departe
+            message = InboundMessage(contact=contact, message_id=message_id, text=text, button_id=button_id,
+                                     attachments=attachments, received_at=received_at,
+                                     from_staff=from_staff)
             try:
-                result = await run_in_threadpool(engine.handle, InboundMessage(**fields))
+                result = await run_in_threadpool(engine.handle, message)
                 actions = _ACTIONS.validate_python(result)
             except Exception:
                 discard(attachments)
@@ -418,10 +487,13 @@ def create_app(
                 actions, duplicate = _ACTIONS.validate_json(cached), True
             else:
                 try:
-                    actions = _ACTIONS.validate_python(
-                        await run_in_threadpool(engine.approve, approval_id, body.by, clock()))
-                except LookupError:
-                    raise ApiError(404, "approval_not_found", "Aprobarea nu exista.") from None
+                    actions = _ACTIONS.validate_python(await run_in_threadpool(
+                        engine.approve, approval_id, body.by, clock(), body.edited_text))
+                except Exception as exc:
+                    failure = decision_failure(exc, "approval")
+                    if failure is None:
+                        raise
+                    raise failure from None
                 payload = _ACTIONS.dump_json(actions).decode()
                 if channel == "site" and actions:
                     await run_in_threadpool(db.push_outbox, key, payload)
@@ -444,8 +516,11 @@ def create_app(
         async with locks.hold(owner or ("approval", approval_id)):
             try:
                 await run_in_threadpool(engine.reject, approval_id, body.by, clock())
-            except LookupError:
-                raise ApiError(404, "approval_not_found", "Aprobarea nu exista.") from None
+            except Exception as exc:
+                failure = decision_failure(exc, "approval")
+                if failure is None:
+                    raise
+                raise failure from None
         logger.info("approval rejected id=%s", approval_id)
         channel, key = owner or (None, None)
         return {"approval_id": approval_id, "channel": channel, "key": key, "status": "rejected",
@@ -508,25 +583,8 @@ def create_app(
                 raise invalid
 
             async def load() -> list[Attachment]:
-                dest = conversation_dir(contact)
-                dest.mkdir(parents=True, exist_ok=True)
-                tmp = dest / f".{uuid.uuid4().hex}.part"
-                size, head = 0, b""
-                try:
-                    with tmp.open("wb") as out:
-                        while chunk := await upload.read(64 * 1024):
-                            size += len(chunk)
-                            if size > settings.max_upload_bytes:
-                                raise ApiError(413, "upload_too_large", "Fișierul depășește mărimea maximă.")
-                            if len(head) < SNIFF_BYTES:
-                                head += chunk[:SNIFF_BYTES - len(head)]
-                            out.write(chunk)
-                    mime = check_content(head, settings.allowed_mimes)
-                    final = dest / f"{uuid.uuid4().hex}{EXTENSIONS.get(mime, '.bin')}"
-                    os.replace(tmp, final)
-                finally:
-                    tmp.unlink(missing_ok=True)
-                return [Attachment(path=str(final), mime=mime, filename=safe_filename(upload.filename))]
+                path, mime = await save_upload(upload, conversation_dir(contact))
+                return [Attachment(path=str(path), mime=mime, filename=safe_filename(upload.filename))]
 
             actions, _ = await process(contact, message_id=message_id, text=text, button_id=None,
                                        received_at=clock(), from_staff=False, load=load)
@@ -540,6 +598,103 @@ def create_app(
         batches = await run_in_threadpool(db.pop_outbox, contact.key)
         actions = [a for batch in batches for a in _ACTIONS.validate_json(batch)]
         return site_payload(actions, request)
+
+    # ---------- mod asistat: extensia Chrome de pe WhatsApp Web ----------
+    # Apelurile vin din service worker-ul extensiei, deci fara CORS. Nimic nu se trimite clientului de aici.
+
+    def staff(request: Request) -> str:
+        given = request.headers.get("x-ecquote-assist-token")
+        name = None
+        for candidate, token in assist_tokens:  # fara iesire timpurie
+            if secrets_equal(given, token):
+                name = candidate
+        if name is None:
+            raise ApiError(401, "unauthorized", "Token lipsa sau gresit.")
+        check_rate(limit_assist, name)
+        return name
+
+    def require_assist() -> AssistEngine:
+        if assist_engine is None:
+            raise ApiError(503, "assist_unavailable", "Modul asistat nu este disponibil.")
+        return assist_engine
+
+    @app.get("/v1/assist/ping")
+    async def assist_ping(request: Request):
+        return {"ok": True, "staff": staff(request)}
+
+    @app.post("/v1/assist/upload")
+    async def assist_upload(request: Request):
+        name = staff(request)
+        invalid = ApiError(422, "invalid_request", "Cerere invalida.")
+        async with request.form(max_files=1, max_fields=3) as form:
+            upload, chat_key, message_id = form.get("file"), form.get("chat_key"), form.get("message_id")
+            if not (isinstance(upload, UploadFile) and isinstance(chat_key, str)
+                    and re.fullmatch(ASSIST_KEY_PATTERN, chat_key)
+                    and isinstance(message_id, str) and MESSAGE_ID.fullmatch(message_id)):
+                raise invalid
+            filename = safe_filename(upload.filename)
+            # Acelasi (conversatie, mesaj, nume de fisier) da acelasi id: reincarcarea nu dubleaza fisierul.
+            upload_id = hmac.new(upload_key, "\0".join((chat_key, message_id, filename or "")).encode(),
+                                 hashlib.sha256).hexdigest()[:32]
+            async with locks.hold(("whatsapp", chat_key)):
+                known = await run_in_threadpool(db.get_upload, upload_id, chat_key)
+                if known is None or not Path(known[0]).is_file():
+                    path, mime = await save_upload(upload, data_root / "conversations" / "whatsapp"
+                                                   / chat_key / "inbound")
+                    await run_in_threadpool(db.save_upload, upload_id, chat_key, str(path), mime, filename)
+        logger.info("assist upload staff=%s contact=%s", name, contact_ref(chat_key, log_salt))
+        return {"upload_id": upload_id}
+
+    @app.post("/v1/assist/suggest")
+    async def assist_suggest(body: AssistSuggestRequest, request: Request):
+        name = staff(request)
+        source = require_assist()
+        contact = Contact(channel="whatsapp", key=body.chat.key, phone=body.chat.phone, name=body.chat.name)
+        async with locks.hold(("whatsapp", contact.key)):
+            messages: list[AssistMessage] = []
+            for item in body.messages[-ASSIST_MAX_MESSAGES:]:
+                attachments = []
+                for ref in item.attachments:
+                    found = await run_in_threadpool(db.get_upload, ref.upload_id, contact.key)
+                    if found is None:
+                        raise ApiError(422, "unknown_upload",
+                                       "Fisierul nu a fost incarcat pentru aceasta conversatie.")
+                    attachments.append(Attachment(path=found[0], mime=found[1], filename=found[2]))
+                sent = item.sent_at
+                if sent is not None and sent.tzinfo is None:
+                    sent = sent.replace(tzinfo=timezone.utc)
+                messages.append(AssistMessage(id=item.id, direction=item.direction,
+                                              text=item.text[:ASSIST_MAX_TEXT], sent_at=sent,
+                                              attachments=attachments))
+            suggestion = AssistSuggestion.model_validate(
+                await run_in_threadpool(source.suggest, contact, messages, clock()))
+            await run_in_threadpool(db.save_approval, suggestion.suggestion_id, "assist", contact.key)
+        logger.info("assist suggest staff=%s contact=%s messages=%d kind=%s", name,
+                    contact_ref(contact.key, log_salt), len(messages), suggestion.kind)
+        return suggestion_payload(suggestion, media_url_for(request))
+
+    @app.post("/v1/assist/suggestions/{suggestion_id}/payment-link")
+    async def assist_payment_link(suggestion_id: str, request: Request,
+                                  body: AssistPaymentLinkRequest | None = None):
+        name = staff(request)
+        source = require_assist()
+        if not APPROVAL_ID.fullmatch(suggestion_id):
+            raise ApiError(404, "suggestion_not_found", "Nu exista.")
+        owner = await run_in_threadpool(db.get_approval, suggestion_id)
+        key = owner[1] if owner and owner[0] == "assist" else None
+        async with locks.hold(("whatsapp", key) if key else ("suggestion", suggestion_id)):
+            try:
+                suggestion = AssistSuggestion.model_validate(await run_in_threadpool(
+                    source.create_payment_link, suggestion_id, name, clock(),
+                    body.edited_text if body else None))
+            except Exception as exc:
+                failure = decision_failure(exc, "suggestion")
+                if failure is None:
+                    raise
+                raise failure from None
+        logger.info("assist payment link staff=%s contact=%s", name,
+                    contact_ref(key, log_salt) if key else "-")
+        return suggestion_payload(suggestion, media_url_for(request))
 
     if settings.demo:
         # Pagina de proba si fisierele widgetului, doar cu EC_QUOTE_DEMO=1.

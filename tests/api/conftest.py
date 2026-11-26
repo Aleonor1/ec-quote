@@ -17,6 +17,10 @@ from ec_quote.contracts import OutboundAction
 
 SECRET = "test-inbound-secret-0123456789abcdef"
 AUTH = {"X-EcQuote-Secret": SECRET}
+ANA_TOKEN = "token-ana-0123456789abcdefghij"
+MIHAI_TOKEN = "token-mihai-0123456789abcdefgh"
+ANA = {"X-EcQuote-Assist-Token": ANA_TOKEN}
+MIHAI = {"X-EcQuote-Assist-Token": MIHAI_TOKEN}
 WA_KEY = "40700001234"
 ORIGIN = "https://etichetecreative.ro"
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
@@ -47,6 +51,7 @@ class FakeEngine:
         self.reply = reply if reply is not None else [OutboundAction(kind="text", text="Salut")]
         self.handled = []
         self.approved = []
+        self.edited = []
         self.rejected = []
         self.approvals = {}
         self.lock = threading.Lock()
@@ -56,8 +61,9 @@ class FakeEngine:
             self.handled.append(message)
         return self.reply(message) if callable(self.reply) else list(self.reply)
 
-    def approve(self, approval_id, approved_by, now):
+    def approve(self, approval_id, approved_by, now, edited_text=None):
         self.approved.append((approval_id, approved_by, now))
+        self.edited.append(edited_text)
         return list(self.approvals.pop(approval_id))
 
     def reject(self, approval_id, rejected_by, now):
@@ -88,12 +94,13 @@ def base_env(tmp_path, **extra) -> dict:
         "EC_QUOTE_MAX_ATTACHMENT_MB": "1",
         "EC_QUOTE_MAX_UPLOAD_MB": "1",
         "GIT_COMMIT": "abc1234",
+        "EC_QUOTE_ASSIST_TOKENS": f"ana:{ANA_TOKEN}, mihai:{MIHAI_TOKEN}",
     }
     env.update(extra)
     return env
 
 
-def build(tmp_path, *, engine=None, env=None, handler=None, resolver=public_resolver):
+def build(tmp_path, *, engine=None, env=None, handler=None, resolver=public_resolver, assist=None):
     settings = load_settings(base_env(tmp_path, **(env or {})), require_integrations=False)
     engine = engine or FakeEngine()
     clock = FakeClock()
@@ -110,9 +117,9 @@ def build(tmp_path, *, engine=None, env=None, handler=None, resolver=public_reso
     store = ApiStore(settings.data_dir / "api.sqlite3", clock=lambda: clock().timestamp())
     _stores.append(store)
     app = create_app(engine, settings, clock=clock, monotonic=clock.monotonic,
-                     http_client=http_client, resolver=resolver, store=store)
+                     http_client=http_client, resolver=resolver, store=store, assist=assist)
     client = TestClient(app, base_url="https://quote.test", raise_server_exceptions=False)
-    return SimpleNamespace(app=app, client=client, engine=engine, clock=clock, settings=settings,
+    return SimpleNamespace(app=app, client=client, engine=engine, assist=assist, clock=clock, settings=settings,
                            requests=requests, data_dir=settings.data_dir.resolve())
 
 

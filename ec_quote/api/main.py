@@ -5,12 +5,10 @@ Pornire: python3 -m uvicorn ec_quote.api.main:app --port 8080
 Modulele surori se incarca dupa calea de import abia la construirea aplicatiei, asa ca
 importul acestui fisier nu cere nici setari, nici module surori (testele raman fara retea).
 
-Conventia asteptata de la fiecare modul:
-- porturile: o functie `fabrica(settings)` care intoarce implementarea portului;
-- motorul: `build_engine(settings=..., clock=..., pricing=..., files=..., mockup=...,
-  checkout=..., crm=..., handoff=...)`.
+Motorul real se construieste in ec_quote/api/wiring.py (`build_engine(settings=..., clock=...)`),
+din clasele exportate de modulele surori. Fara CRM_BASE_URL, CRM-ul este inlocuit cu porturi goale.
 
-EC_QUOTE_ENGINE_FACTORY="modul:functie" inlocuieste tot lantul cu `functie(settings=..., clock=...)`;
+EC_QUOTE_ENGINE_FACTORY="modul:functie" inlocuieste fabrica cu `functie(settings=..., clock=...)`;
 asa porneste pagina de proba cu motorul demonstrativ (ec_quote.api.demo_engine:build_engine).
 """
 from __future__ import annotations
@@ -31,15 +29,7 @@ from ec_quote.contracts import Engine
 
 BUCHAREST = ZoneInfo("Europe/Bucharest")
 
-PORT_FACTORIES = {
-    "pricing": "ec_quote.pricing:build_pricing",
-    "files": "ec_quote.files:build_files",
-    "mockup": "ec_quote.mockup:build_mockup",
-    "checkout": "ec_quote.integrations:build_checkout",
-    "crm": "ec_quote.integrations:build_crm",
-    "handoff": "ec_quote.integrations:build_handoff",
-}
-ENGINE_FACTORY = "ec_quote.agent:build_engine"
+ENGINE_FACTORY = "ec_quote.api.wiring:build_engine"
 
 
 class WiringError(RuntimeError):
@@ -60,10 +50,11 @@ def load_object(path: str) -> Any:
 
 def build_engine(settings: Settings, clock: Callable[[], datetime],
                  override: str | None = None) -> Engine:
-    if override:
-        return load_object(override)(settings=settings, clock=clock)
-    ports = {name: load_object(path)(settings) for name, path in PORT_FACTORIES.items()}
-    return load_object(ENGINE_FACTORY)(settings=settings, clock=clock, **ports)
+    path = override or ENGINE_FACTORY
+    try:
+        return load_object(path)(settings=settings, clock=clock)
+    except ImportError as exc:  # un modul sora sau un SDK lipseste
+        raise WiringError(f"Nu pot construi motorul din {path!r} ({type(exc).__name__})") from exc
 
 
 def build(env: Mapping[str, str] | None = None) -> FastAPI:
@@ -72,9 +63,11 @@ def build(env: Mapping[str, str] | None = None) -> FastAPI:
     configure_logging()
     settings = load_settings(src, require_integrations=override is None)
     engine = build_engine(settings, bucharest_now, override)
-    logger.info("ec-quote starting commit=%s demo=%s cors_origins=%d attachment_hosts=%d",
+    logger.info("ec-quote starting commit=%s demo=%s cors_origins=%d attachment_hosts=%d "
+                "assist_tokens=%d crm=%s",
                 settings.git_commit or "-", settings.demo, len(settings.cors_origins),
-                len(settings.attachment_hosts))
+                len(settings.attachment_hosts), len(settings.assist_tokens),
+                "on" if settings.crm_base_url else "off")
     return create_app(engine, settings, clock=bucharest_now)
 
 

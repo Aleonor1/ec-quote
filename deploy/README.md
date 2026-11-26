@@ -5,11 +5,12 @@ Două containere: aplicația (`app`, un singur proces) și Caddy (TLS automat). 
 ## Ce trebuie setat
 
 1. DNS: un subdomeniu (de exemplu `oferta.etichetecreative.ro`) cu înregistrare A către VPS. Porturile 80 și 443 deschise.
-2. Fișierul `.env` din rădăcina `ec-quote` (copiat din `.env.example`), cu valorile reale. Pe lângă cele din exemplu:
+2. Fișierul `.env` din rădăcina `ec-quote` (copiat din `.env.example`), cu valorile reale. CRM-ul este opțional (`CRM_BASE_URL` gol). Cele mai importante:
 
 | Variabilă | Rol |
 | --- | --- |
 | `EC_QUOTE_INBOUND_SECRET` | Minim 24 de caractere. Aceeași valoare se pune în CRM și în calculator. Generare: `openssl rand -hex 32` |
+| `EC_QUOTE_ASSIST_TOKENS` | Extensia Chrome de pe WhatsApp Web: perechi `nume:token` separate prin virgulă, câte una de coleg (token de minim 24 de caractere, `openssl rand -hex 24`). Un token scos din listă nu mai funcționează după repornire. Goală: rutele `/v1/assist/*` refuză tot |
 | `EC_QUOTE_PUBLIC_BASE_URL` | `https://oferta.etichetecreative.ro`. Baza linkurilor de imagini trimise către CRM și chat |
 | `EC_QUOTE_ATTACHMENT_HOSTS` | Gazdele de la care se descarcă atașamentele trimise de CRM, separate prin virgulă. Goală: niciun atașament nu se descarcă |
 | `EC_QUOTE_CORS_ORIGINS` | Originile magazinului, dacă widgetul cheamă direct ec-quote: `https://etichetecreative.ro,https://www.etichetecreative.ro`. Goală dacă chatul trece doar prin App Proxy |

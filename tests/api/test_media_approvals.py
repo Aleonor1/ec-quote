@@ -186,3 +186,48 @@ def test_unknown_approval_is_404(api, verb, approval_id):
 def test_approval_body_is_validated(api):
     response = api.client.post("/v1/approvals/apr-1/approve", json={}, headers=AUTH)
     assert response.status_code == 422
+
+
+def test_edited_text_reaches_the_engine(tmp_path):
+    api = build(tmp_path, engine=shadow_engine(tmp_path))
+    api.client.post("/v1/inbound", json=inbound_body(), headers=AUTH)
+    body = {"by": "ana", "edited_text": "Oferta corectata"}
+    assert api.client.post("/v1/approvals/apr-1/approve", json=body, headers=AUTH).status_code == 200
+    assert api.engine.edited == ["Oferta corectata"]
+
+
+class ApprovalError(Exception):
+    """Acelasi nume ca eroarea din modulul agent; API-ul o recunoaste dupa nume."""
+
+
+@pytest.mark.parametrize("message, status, code", [
+    ("aprobare necunoscuta: apr-1", 404, "approval_not_found"),
+    ("aprobarea apr-1 este deja approved", 409, "approval_not_available"),
+    ("oferta a expirat; trebuie refacuta", 409, "approval_not_available"),
+])
+@pytest.mark.parametrize("verb", ["approve", "reject"])
+def test_engine_approval_errors_map_to_404_or_409(tmp_path, message, status, code, verb):
+    engine = FakeEngine()
+
+    def fail(*args, **kwargs):
+        raise ApprovalError(message)
+
+    engine.approve = engine.reject = fail
+    api = build(tmp_path, engine=engine)
+    response = api.client.post(f"/v1/approvals/apr-1/{verb}", json={"by": "ana"}, headers=AUTH)
+    assert response.status_code == status
+    assert response.json()["error"]["code"] == code
+    assert "apr-1 este" not in response.text and "expirat" not in response.text
+
+
+@pytest.mark.parametrize("verb", ["approve", "reject"])
+def test_other_engine_errors_stay_500(tmp_path, verb):
+    engine = FakeEngine()
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("shopify cazut")
+
+    engine.approve = engine.reject = fail
+    api = build(tmp_path, engine=engine)
+    response = api.client.post(f"/v1/approvals/apr-1/{verb}", json={"by": "ana"}, headers=AUTH)
+    assert response.status_code == 500 and "shopify" not in response.text

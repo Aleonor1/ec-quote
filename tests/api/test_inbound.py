@@ -321,15 +321,7 @@ def test_svg_is_accepted_as_artwork(tmp_path):
     assert api.engine.handled[0].attachments[0].mime == "image/svg+xml"
 
 
-def test_message_id_is_passed_to_the_engine_once_the_contract_has_the_field(tmp_path, monkeypatch):
-    from ec_quote.api import app as app_module
-    from ec_quote.contracts import InboundMessage
-
-    class WithMessageId(InboundMessage):
-        message_id: str | None = None
-
-    monkeypatch.setattr(app_module, "InboundMessage", WithMessageId)
-    api = build(tmp_path)
+def test_message_id_is_passed_to_the_engine(api):
     api.client.post("/v1/inbound", json=inbound_body(), headers=AUTH)
     assert api.engine.handled[0].message_id == "wamid.TEST1"
 
