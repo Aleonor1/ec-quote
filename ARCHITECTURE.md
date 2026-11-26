@@ -1,127 +1,101 @@
 # ec-quote: orientation map
 
-Snapshot: 2026-11-26, scaffold day (six modules written in parallel, not yet wired together). Re-run `/project-overview` after EPIC-0 merges. Rules: `docs/dev-rules.md`. Backlog: `specs/todo/`. Owner's summary in Romanian: `docs/plan.md`.
+Snapshot: 2026-11-26, scaffold day, after the owner's change of direction: WhatsApp is served by a Chrome extension that suggests replies on WhatsApp Web; nothing is sent automatically and nothing goes through the Meta Cloud API. Re-run `/project-overview` after EPIC-0 merges. Rules: `docs/dev-rules.md`. Backlog: `specs/todo/`. Owner's summary in Romanian: `docs/plan.md`.
 
 ## What it is
 
-One quoting engine for two channels. The customer writes freely and receives a price, a mockup and a payment link. The language model understands and asks; deterministic tools produce every number and every artifact.
+A backend that turns a conversation into a suggested reply, and a browser extension that shows that suggestion to the staff member inside WhatsApp Web. The language model understands and proposes; deterministic tools produce every number and every artifact; a person reads, edits and sends.
 
 ```
-InboundMessage ──▶ Engine.handle ──▶ model loop (understand, ask)
-                        │                 │ tool calls, validated against contracts and the catalog
-                        │                 ▼
-                        │      get_price / get_price_tiers   ec_quote/pricing      ─▶ calculator app
-                        │      check_file                    ec_quote/files
-                        │      make_cutline, make_mockup     ec_quote/mockup       ─▶ calculator app (cut line, EPIC-2)
-                        │      create_checkout               ec_quote/integrations ─▶ Shopify Admin (Draft Order)
-                        │      upsert_lead, handoff          ec_quote/integrations ─▶ CRM
-                        ▼
-              outbound guard (amounts, claims, deadlines) ─▶ OutboundAction[] ─▶ the channel delivers
+WhatsApp Web (staff browser)
+  content script reads the open chat ─▶ extension service worker
+        │ POST /v1/assist/suggest   (X-EcQuote-Assist-Token, visible messages with their ids)
+        │ POST /v1/assist/upload    (a customer attachment the staff member chose to check)
+        ▼
+  ec-quote backend ─▶ AssistEngine.suggest ─▶ model loop (understand, propose)
+        │                       │ tool calls, validated against contracts and the catalog
+        │                       ▼
+        │        get_price / get_price_tiers   ec_quote/pricing      ─▶ calculator app
+        │        check_file                    ec_quote/files
+        │        make_cutline, make_mockup     ec_quote/mockup       ─▶ calculator app (cut line, EPIC-2)
+        │        guard (amounts, claims, deadlines)
+        ▼
+  AssistSuggestion { kind, text, options, offer_lines, image, note_for_staff, can_create_payment_link }
+        ▼
+  side panel: the staff member reads it, clicks Insert (text goes into the composer), edits, presses Send
+        │ optional click: POST /v1/assist/suggestions/{id}/payment-link ─▶ create_checkout ─▶ Shopify Draft Order
+        ▼
+  the final text with the payment link is inserted; the person sends it
 ```
 
 ## Modules
 
-| Package | Port (`ec_quote/contracts.py`) | Notes |
+| Path | Port (`ec_quote/contracts.py`) | Notes |
 | --- | --- | --- |
 | `ec_quote/pricing/` | `PricingPort` | `client.py` (`CalculatorClient`: `X-Sync-Secret`, catalog TTL cache, one retry), `catalog.py`, `errors.py`, `fake.py` (`FakeCalculator` for tests) |
 | `ec_quote/files/` | `FilePort` | `sniff.py` (type from magic bytes), `checker.py` (`FileChecker`, never raises, no network), `problems.py` (stable problem codes) |
 | `ec_quote/mockup/` | `MockupPort` | `service.py`, `templates.py` (strict manifest, selection by context keywords), `warp.py`, `compose.py`, `offer.py` (the offer image, 1080x1350), `formatting.py`, bundled DejaVu fonts; templates under `templates/mockups/` |
-| `ec_quote/agent/` | `Engine` | `engine.py`, `model.py` (model loop), `tools.py`, `prompts.py`, `offer.py` (texts with numbers, composed by code), `guard.py` (checks amounts, percentages, deadlines, material claims in model text), `rules.py` (`Rules` from `config/rules.json`, business hours, production term), `store.py` (`ConversationStore`: SQLite and in memory; `claim_inbound` for idempotency; approvals) |
-| `ec_quote/integrations/` | `CheckoutPort`, `CrmPort`, `HandoffPort` | `shopify.py` (`ShopifyCheckout`: Draft Order on the product's permanent variant with `priceOverride` = calculator total, line properties from the calculator, `get_status`), `crm.py` (`CrmClient` over the bridge `/api/ec-quote/*`, bearer token, `Idempotency-Key`) |
-| `ec_quote/api/` | none | `app.py` (`create_app`: `POST /v1/inbound`, `POST /v1/approvals/{id}/approve` and `reject`, `POST /v1/chat/session`, `message`, `upload`, `GET /v1/chat/poll`, `GET /v1/media/{token}`, `GET /health`), `main.py` (composition root), `security.py` (constant time secret compare, HMAC signed session and media tokens), `fetcher.py`, `ratelimit.py`, `logutil.py`, `schemas.py`, `static/` (demo widget, only with `EC_QUOTE_DEMO=1`) |
+| `ec_quote/agent/` | `AssistEngine`, `Engine` | `engine.py`, `model.py` (model loop), `tools.py`, `prompts.py`, `offer.py` (texts with numbers, composed by code), `guard.py` (amounts, percentages, deadlines, material claims), `rules.py` (`Rules` from `config/rules.json`), `store.py` (`ConversationStore`: SQLite and in memory) |
+| `ec_quote/integrations/` | `CheckoutPort`, `CrmPort`, `HandoffPort` | `shopify.py` (`ShopifyCheckout`: Draft Order on the product's permanent variant with `priceOverride` = calculator total, line properties from the calculator, `get_status`); `crm.py` (optional, EPIC-4) |
+| `ec_quote/api/` | none | `app.py` (`create_app`), `main.py` (composition root), `security.py`, `fetcher.py`, `ratelimit.py`, `logutil.py`, `schemas.py`. Assist routes: `POST /v1/assist/suggest`, `POST /v1/assist/upload`, `POST /v1/assist/suggestions/{id}/payment-link`, `GET /v1/assist/ping`. Also present from scaffold day and optional: `/v1/chat/*` and `static/` (site chat), `/v1/inbound` and `/v1/approvals/*` (written for a CRM driven flow that is no longer planned) |
 | `ec_quote/config.py` | | `Settings` from environment, fails closed, secrets as `SecretStr` |
+| `extension/` | | Manifest V3. Content script on `https://web.whatsapp.com/*` only; one selector map file for everything it reads from the page; a self-test; a side panel; a service worker that is the only part talking to the backend. Being written; its layout is fixed by story-11 to story-14. |
 
-State: SQLite under `EC_QUOTE_DATA_DIR` (conversations, message log, approvals). No other datastore.
+`AssistEngine` contract: `suggest(contact, messages, now)` is idempotent on the WhatsApp message ids, so the extension can call it again whenever the visible conversation changes; `create_payment_link(suggestion_id, staff, now, edited_text)` creates the Draft Order and returns the final text with the link. `AssistSuggestion.kind` is one of `reply`, `question`, `offer`, `needs_human`, `none`.
+
+State: SQLite under `EC_QUOTE_DATA_DIR` (conversations keyed by the WhatsApp contact, suggestions, offers). No other datastore. The extension keeps no conversation data.
 
 ## What already exists elsewhere
 
-The original plan assumed more had to be built. Verified in code on 2026-11-26.
+Verified in code on 2026-11-26.
 
-| System | Capability | Endpoint or file | Status |
+| System | Capability | Endpoint or file | Status and use here |
 | --- | --- | --- | --- |
-| Calculator app | Exact site price and line item properties for one line, server to server | `POST /api/sync/line` (`app/routes/api.sync.line.ts`, `app/utils/crm-line-price.server.ts`, `docs/spec-crm-line-price.md`) | Exists. 200 `priced`, 422 `unpriced` with a reason code, 503 retryable. Parity with `calculator.js` proven by 130 tests. |
-| Calculator app | Full calculator configuration (products, shapes, materials, sizes, limits, options, tiers, settings) | `GET /api/sync/calculator-config` (`app/routes/api.sync.calculator-config.ts`, `docs/spec-crm-calculator-config.md`) | Exists. Sticker mode products only; `fixed`, `bundle` and `area` products are absent, so they are `not_in_calculator`. |
-| Calculator app | Presigned upload to R2 with a public URL | `POST /api/sync/upload-url` (`app/routes/api.sync.upload-url.ts`) | Exists. PNG, JPG, PDF, SVG, AI, 25 MB, keys under `crm/`, kept 365 days. |
-| Calculator app | Artwork inspection | `POST /api/sync/artwork-inspect` (`app/routes/api.sync.artwork-inspect.ts`, `app/utils/artwork-inspect.server.ts`) | Exists for PDF and PDF compatible AI only (pages, fonts, Canva, page size, minimum image PPI, SVG of page 1). Only files already in the app's own R2 storage. A raster answers 422 `not_pdf`. |
-| Calculator app | Cut line geometry (Contur Studio) | `extensions/calculator/assets/contur-studio.js` | Browser only. See "Headless cut line" below. |
-| Calculator app | Production PDF from an approved proof | `app/utils/production-pdf.server.ts` (`buildProductionPdf`), `app/utils/bezier-fit.server.ts`, `app/utils/emboss-trace.js` | Exists on the server, but consumes cut paths; it does not compute them. |
-| Calculator app | Contur Studio as an isolated page for the CRM | `GET /crm-studio` (`app/routes/crm-studio.ts`, `app/utils/crm-studio.server.ts`, `app/crm-studio/bridge.js`) | Exists. An iframe page driven by `postMessage`; needs a browser. |
-| Calculator app | Storefront theme extension and App Proxy | `extensions/calculator/blocks/*.liquid`, `app/routes/api.storefront.*.ts` | Exists. No chat block and no chat proxy route yet. |
-| Calculator app | Order webhooks | `shopify.app.toml`: `orders/create`, `orders/fulfilled`, `orders/cancelled` | Exists. No `orders/paid` subscription. ec-quote learns about payment from the Draft Order status and from the CRM (story-15). |
-| CRM | Meta WhatsApp Cloud API webhook (signature, anti replay, per event isolation) | `services/inbox/src/routes/whatsappWebhook.ts` | Exists. |
-| CRM | Coexistence with the phone app: staff echoes, 180 day history import, contact names | `services/inbox/src/services/whatsappCoexistenceService.ts` (story-197) | Exists. |
-| CRM | Unified inbox, conversations, lead matching | `services/inbox/src/services/conversationService.ts`, `whatsappService.ts` (story-183, story-184) | Exists. |
-| CRM | Send text, image by URL, approved template | `packages/integrations/src/whatsappBusinessClient.ts` (`sendText`, `sendImage`, `sendTemplate`) | Exists. No interactive buttons message. |
-| CRM | Send path for automatic messages (24 hour window, kill switch, daily cap, DNC, audit) | `services/inbox/src/services/conversationSendService.ts` (`sentBy: 'ai_auto'`), `inboxAutoReplyService.ts` (story-187) | Exists. |
-| CRM | Templates with a paid monthly cap | `services/inbox/src/services/whatsappTemplateService.ts`, `whatsappTemplateSendService.ts` (story-185) | Exists. 409 `template_cap_reached` when the cap is used. |
-| CRM | AI reply drafts with approve, edit, reject | `services/inbox/src/services/aiReplyDraftService.ts`, `draftDelivery.ts` (story-187) | Exists. The natural home of the shadow mode approval. |
-| CRM | Handover to a human | `services/inbox/src/services/inboxHandoverService.ts` (`raiseHandover`) | Exists. |
-| CRM | Inbound media | `services/inbox/src/services/whatsappService.ts` stores `mediaId` and `mediaMime` | Partial. The file itself is not downloaded from Meta. |
-| CRM | Client of the calculator sync API | `packages/integrations/src/railwayQuoteClient.ts` (`QUOTE_SYNC_SECRET`) | Exists. Same secret ec-quote uses as `CALCULATOR_SYNC_SECRET`. |
-| CRM | Forwarding messages to ec-quote and delivering its actions | `specs/todo/crm-ec-quote-bridge.md` in this repository | Missing. The CRM stories of EPIC-3. |
+| Calculator app | Exact site price and line item properties for one line, server to server | `POST /api/sync/line` (`app/routes/api.sync.line.ts`, `app/utils/crm-line-price.server.ts`, `docs/spec-crm-line-price.md`) | Exists. 200 `priced`, 422 `unpriced` with a reason code, 503 retryable. Parity with `calculator.js` covered by 130 tests there. The only price source. |
+| Calculator app | Full calculator configuration | `GET /api/sync/calculator-config` (`app/routes/api.sync.calculator-config.ts`) | Exists. Sticker mode products only; `fixed`, `bundle` and `area` products are absent, so they are `not_in_calculator`. |
+| Calculator app | Presigned upload to R2 with a public URL | `POST /api/sync/upload-url` (`app/routes/api.sync.upload-url.ts`) | Exists. PNG, JPG, PDF, SVG, AI, 25 MB, keys under `crm/`, kept 365 days. Used for artwork on the order (story-16). |
+| Calculator app | Artwork inspection | `POST /api/sync/artwork-inspect` (`app/utils/artwork-inspect.server.ts`) | Exists for PDF and PDF compatible AI only, and only for files in the app's own storage. A raster answers 422 `not_pdf`. |
+| Calculator app | Cut line geometry (Contur Studio) | `extensions/calculator/assets/contur-studio.js` | Browser only. See "Headless cut line". |
+| Calculator app | Production PDF from an approved proof | `app/utils/production-pdf.server.ts`, `bezier-fit.server.ts`, `emboss-trace.js` | Exists on the server, but consumes cut paths; it does not compute them. |
+| Calculator app | Order webhooks | `shopify.app.toml`: `orders/create`, `orders/fulfilled`, `orders/cancelled` | Exists. No `orders/paid`. ec-quote learns about payment from the Draft Order status (story-24). |
+| CRM | WhatsApp Cloud API webhook, Coexistence, inbox, templates, `ai_auto` send path | `services/inbox/src/routes/whatsappWebhook.ts`, `whatsappCoexistenceService.ts`, `conversationSendService.ts`, `whatsappTemplateService.ts` | Exists. Not used by this project any more: staff answer in WhatsApp Web and a person sends. |
+| CRM | Lead intake for a service caller | `specs/todo/crm-ec-quote-bridge.md` | Missing. Optional and later; only the lead upsert is planned (story-28). |
 
 ## Headless cut line
 
-Question: can a cut line be produced on the server today, without a browser? No.
+A cut line cannot be produced on the server today.
 
-- The geometry (distance transform `edt`, marching squares `contours`, `polysMm`, `smoothPolys`, `shapePolys`, `fillHoles`, joining separate parts, the 4 mm neck and 2 mm inner radius rules) lives inside the browser IIFE of `extensions/calculator/assets/contur-studio.js`. Only a few helpers are exposed (`ConturStudio.lib`: `edt`, `thinParts` and others); `contours`, `polysMm`, `shapePolys`, `fillHoles` and the orchestration are closed over inside `mount()`, tied to DOM canvases (`document.createElement("canvas")`, `getImageData`) and to the studio state.
-- PDF pages are rendered in the browser with pdf.js from a CDN. Background removal runs in the browser with transformers.js (WebGPU or WASM, loaded from esm.sh).
-- The server side starts after the customer approved a proof: `buildProductionPdf` receives `ProofData.paths.cut` already computed by the browser.
-- `/crm-studio` is the same browser code in an iframe.
+- The geometry (`edt`, marching squares `contours`, `polysMm`, `smoothPolys`, `shapePolys`, `fillHoles`, joining parts, the 4 mm neck and 2 mm inner radius rules) lives inside the browser IIFE of `extensions/calculator/assets/contur-studio.js`, closed over in `mount()` and tied to DOM canvases. Only a few helpers are exposed (`ConturStudio.lib`).
+- PDF pages are rendered in the browser with pdf.js from a CDN; background removal runs in the browser with transformers.js.
+- The server side starts after a proof was approved: `buildProductionPdf` receives `ProofData.paths.cut` already computed. `/crm-studio` is the same browser code in an iframe.
 
-Missing for a headless `make_cutline` (story-21, calculator app):
+Missing for a headless `make_cutline` (story-21, calculator app): extract the geometry into a plain module without DOM (the pattern of `pricing-core.js` and `emboss-trace.js`); a server input adapter with `sharp` and Ghostscript (both in the app's Docker image); a route `POST /api/sync/cutline` returning `ProofData` compatible paths; a parity test against the studio in jsdom. There is no headless background removal: an image with an opaque background gets a shape cut or goes to a person.
 
-1. Extract the geometry kernel into a plain module without DOM (the pattern already used for `app/utils/pricing-core.js` and `app/utils/emboss-trace.js`, with a generated storefront copy), so the browser and the server run the same code.
-2. A server input adapter: artwork to an RGBA alpha mask on the millimetre grid with `sharp`, PDF and AI page 1 rasterized with Ghostscript (both already in the app's Docker image).
-3. A route `POST /api/sync/cutline` (`X-Sync-Secret`, own storage URL guard) that returns `ProofData` compatible geometry (`design`, `paths.cut`, `paths.bleed`, `paths.liner`) and a preview PNG.
-4. A parity test: the same fixture through the studio in jsdom (`tests/helpers/canvas-shim.ts`) and through the route gives the same cut path within a tolerance.
-5. No headless background removal. An image with an opaque background gets a shape cut (rectangle, rounded, circle, oval), never a contour. A contour for such an image needs the customer in the studio or a human.
+Until story-21 ships, `make_cutline` in ec-quote produces a preview outline for the mockup only, labelled as indicative.
 
-Until story-21 ships, `make_cutline` in ec-quote produces a preview outline for the mockup only and marks it as not for production.
+## The extension and WhatsApp Web
 
-## Data flow: WhatsApp through the CRM
-
-ec-quote never talks to Meta. The CRM owns the number, the webhook, the 24 hour window, templates, caps, the kill switch and the audit of automatic sends.
-
-```
-Customer ─▶ Meta Cloud API ─▶ CRM  POST /api/whatsapp/webhook   (signature, anti replay, stored in the inbox)
-                                  │  bridge (EPIC-3, CRM): fetches the media from Meta, serves it at a signed URL, builds InboundMessage
-                                  ▼
-                          ec-quote  POST /v1/inbound (x-ecquote-secret) ─▶ Engine.handle
-                                  │  returns OutboundAction[]
-                                  ▼
-                               CRM  text, image, buttons ─▶ conversationSendService (sentBy 'ai_auto')
-                                    pending_approval     ─▶ draft in the inbox, one click ─▶ ec-quote approve or reject
-                                    handoff              ─▶ raiseHandover, the conversation goes to a person
-                                  ▼
-                        Meta Cloud API ─▶ Customer
-```
-
-- A message written by staff from the phone app arrives in the CRM as an echo (`smb_message_echoes`). The bridge forwards it with `from_staff: true`; the engine switches that conversation to manual for `manual_mode_quiet_hours`.
-- Follow ups: Meta's free window is 24 hours from the customer's last message, and the offer is sent after that message. So a reminder at 24 hours after the offer is already outside the window, like the one at 72 hours. Both need an approved template sent by the CRM under its monthly cap, unless the first reminder is moved earlier (owner decision, `follow_up_hours`).
-- The wire contract is `specs/todo/crm-ec-quote-bridge.md`.
-
-## Data flow: site chat
-
-```
-Direct:  Browser (theme block in extensions/calculator) ─▶ ec-quote /v1/chat/*   (CORS for the shop's origin, signed session token)
-Proxy:   Browser ─▶ https://etichetecreative.ro/apps/calculator/quote-chat/* ─▶ calculator app (authenticate.public.appProxy)
-                 ─▶ ec-quote /v1/chat/*   (x-ecquote-secret, x-ecquote-client-ip, x-ecquote-session)
-```
-
-The scaffold serves both transports; which one production uses is an owner decision (EPIC-1 D2). In neither does the browser hold a secret. Files are uploaded to `POST /v1/chat/upload`, kept under `EC_QUOTE_DATA_DIR`, and copied to R2 through the calculator app's `upload-url` (story-19). Images come back as expiring `/v1/media/{token}` links.
+- WhatsApp Web has no public API for this and its DOM changes without notice. Everything the content script reads (the open chat's contact, message rows, their ids, direction, text, attachment markers, the composer) goes through one selector map file, and a self-test reports which selectors still match. When a selector breaks, the panel says so and suggests nothing, rather than reading the wrong thing.
+- Scope of page interaction, and nothing more: read the conversation the staff member has open; insert text into the composer; attach the offer image to the composer; download an attachment the staff member pointed at. No sending, no navigation between chats, no bulk actions, no reading of other chats, no background activity when the panel is closed.
+- What leaves the browser: the visible messages of the open chat (id, direction, text, time), the contact's phone and display name, attachments the staff member chose to check, and the staff token. Only to the configured backend, over HTTPS.
+- What the extension stores: the backend address and the staff token (`chrome.storage.local`). No message text, no customer data, no history.
+- Distribution: unpacked during development; a private Chrome Web Store listing for the staff afterwards.
 
 ## Checkout and payment
 
-`create_checkout` creates a Shopify Draft Order: one unit of the product's permanent variant, `priceOverride` equal to `PriceQuote.total`, the calculator's `properties` as line attributes, the artwork URL, tags for the channel and ad source. The order is then read by the CRM and production like a site order. Paid orders are matched back to offers in story-15 (Draft Order status sweep, plus the CRM's `POST /v1/orders/paid` once the bridge exists).
+`create_payment_link` calls `create_checkout`: a Shopify Draft Order with one unit of the product's permanent variant, `priceOverride` equal to `PriceQuote.total`, the calculator's `properties` as line attributes, the artwork URL, and tags. The order is then read by the CRM and production like a site order. Paid orders are matched back to offers by a sweep of Draft Order status (story-24).
+
+## Reminders and measurement
+
+Reminders at the hours in `follow_up_hours` are shown to staff in the extension for offers with no answer; a person decides whether to write. Metrics come from what the backend already sees: time from the customer's message to the suggestion, and what happened to each suggestion (sent unchanged, edited, ignored), derived by comparing the next outgoing message the extension reports with the suggested text.
 
 ## Environment
 
-Names only, values come from the owner: `CALCULATOR_BASE_URL`, `CALCULATOR_SYNC_SECRET`, `ANTHROPIC_API_KEY`, `EC_QUOTE_MODEL`, `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `CRM_BASE_URL`, `CRM_API_SECRET`, `EC_QUOTE_INBOUND_SECRET`, `EC_QUOTE_DATA_DIR`, and for the site chat `EC_QUOTE_CORS_ORIGINS`. See `.env.example` and `ec_quote/config.py`.
+Names only, values come from the owner: `CALCULATOR_BASE_URL`, `CALCULATOR_SYNC_SECRET`, `ANTHROPIC_API_KEY`, `EC_QUOTE_MODEL`, `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `EC_QUOTE_DATA_DIR`, `EC_QUOTE_PUBLIC_BASE_URL`, and the per staff assist tokens (the setting is named by story-4 in `ec_quote/config.py`). `EC_QUOTE_INBOUND_SECRET`, `EC_QUOTE_CORS_ORIGINS`, `CRM_BASE_URL` and `CRM_API_SECRET` matter only for the optional EPIC-4.
 
 ## Related documents
 
 - `CLAUDE.md`: commands, module map, non negotiable rules.
-- `docs/dev-rules.md`: development rules.
-- `docs/plan.md`: what changed against the owner's plan, epics per repository, decisions and credentials (Romanian).
+- `docs/dev-rules.md`: development rules, backend and extension.
+- `docs/plan.md`: what changed, epics, decisions and credentials (Romanian).
 - `specs/todo/epic-*.md`: one design per epic with its story map.

@@ -2,6 +2,7 @@
 
 - idempotency: raspunsul motorului pe (canal, cheie, id mesaj), ca o retrimitere sa nu ruleze motorul din nou;
 - approvals: carui contact ii apartine o aprobare (Engine.approve nu intoarce contactul);
+- assist_uploads: fisierele incarcate de extensia Chrome, pe conversatie;
 - outbox: actiuni aprobate ulterior pentru chatul de pe site, ridicate de widget prin poll.
 """
 from __future__ import annotations
@@ -23,6 +24,10 @@ CREATE TABLE IF NOT EXISTS idempotency (
 );
 CREATE TABLE IF NOT EXISTS approvals (
   approval_id TEXT PRIMARY KEY, channel TEXT NOT NULL, key TEXT NOT NULL, created_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS assist_uploads (
+  upload_id TEXT PRIMARY KEY, chat_key TEXT NOT NULL, path TEXT NOT NULL, mime TEXT NOT NULL,
+  filename TEXT, created_at REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS outbox (
   id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL, actions TEXT NOT NULL, created_at REAL NOT NULL
@@ -80,6 +85,19 @@ class ApiStore:
             if rows:
                 self._db.execute("DELETE FROM outbox WHERE key=? AND id<=?", (key, rows[-1][0]))
         return [r[1] for r in rows]
+
+    def save_upload(self, upload_id: str, chat_key: str, path: str, mime: str, filename: str | None) -> None:
+        with self._lock:
+            self._db.execute("INSERT OR REPLACE INTO assist_uploads VALUES (?, ?, ?, ?, ?, ?)",
+                             (upload_id, chat_key, path, mime, filename, self._clock()))
+
+    def get_upload(self, upload_id: str, chat_key: str) -> tuple[str, str, str | None] | None:
+        """(cale, mime, nume) doar daca incarcarea apartine acestei conversatii."""
+        with self._lock:
+            row = self._db.execute(
+                "SELECT path, mime, filename FROM assist_uploads WHERE upload_id=? AND chat_key=?",
+                (upload_id, chat_key)).fetchone()
+        return (row[0], row[1], row[2]) if row else None
 
     def close(self) -> None:
         with self._lock:

@@ -4,18 +4,19 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from ec_quote.api import texts
-from ec_quote.contracts import Channel, OutboundAction
+from ec_quote.contracts import AssistSuggestion, Channel, OutboundAction
 
 WA_KEY_PATTERN = r"^[0-9]{6,20}$"
 SITE_KEY_PATTERN = r"^[0-9a-f]{32}$"
 
 Text = Annotated[str, StringConstraints(max_length=4096)]
 Short = Annotated[str, StringConstraints(max_length=256)]
+MediaUrl = Callable[[str], str]
 MessageId = Annotated[str, StringConstraints(min_length=1, max_length=200, pattern=r"^[\x21-\x7e]+$")]
 
 
@@ -57,6 +58,7 @@ class InboundRequest(_Strict):
 
 class ApprovalRequest(_Strict):
     by: Annotated[str, StringConstraints(min_length=1, max_length=120)]
+    edited_text: Text | None = None  # omul a corectat textul ofertei inainte de aprobare
 
 
 class ChatSessionRequest(_Strict):
@@ -75,7 +77,47 @@ class ChatMessageRequest(_Strict):
         return self
 
 
-MediaUrl = Callable[[str], str]
+# ---------- mod asistat (extensia Chrome) ----------
+
+ASSIST_KEY_PATTERN = r"^[A-Za-z0-9](?:[A-Za-z0-9_.@-]{0,62}[A-Za-z0-9])?$"
+ASSIST_MAX_MESSAGES = 40      # motorul primeste ultimele 40
+ASSIST_MAX_TEXT = 4096        # textul mai lung se scurteaza, nu se respinge
+UploadId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
+
+
+class AssistChat(_Strict):
+    key: Annotated[str, StringConstraints(pattern=ASSIST_KEY_PATTERN)]
+    name: Short | None = None
+    phone: Annotated[str, StringConstraints(max_length=32)] | None = None
+
+
+class AssistAttachmentRef(_Strict):
+    upload_id: UploadId
+
+
+class AssistMessageIn(_Strict):
+    id: MessageId
+    direction: Literal["in", "out"]
+    text: Annotated[str, StringConstraints(max_length=70000)] = ""
+    sent_at: datetime | None = None
+    attachments: Annotated[list[AssistAttachmentRef], Field(max_length=5)] = Field(default_factory=list)
+
+
+class AssistSuggestRequest(_Strict):
+    chat: AssistChat
+    messages: Annotated[list[AssistMessageIn], Field(max_length=500)]
+
+
+class AssistPaymentLinkRequest(_Strict):
+    edited_text: Text | None = None
+
+
+def suggestion_payload(suggestion: AssistSuggestion, media_url: MediaUrl) -> dict:
+    """Sugestia pentru extensie: banii ca text, imaginea ca link semnat, fara cai locale."""
+    data = suggestion.model_dump(mode="json", exclude={"image_path"})
+    data["image_url"] = media_url(suggestion.image_path) if suggestion.image_path else None
+    return {"suggestion": data}
+
 
 
 def action_for_crm(action: OutboundAction, media_url: MediaUrl) -> dict:

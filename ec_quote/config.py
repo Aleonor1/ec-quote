@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import re
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -28,12 +29,14 @@ INTEGRATION_VARS = (
     "CALCULATOR_BASE_URL",
     "CALCULATOR_SYNC_SECRET",
     "ANTHROPIC_API_KEY",
-    "EC_QUOTE_MODEL",
     "SHOPIFY_SHOP_DOMAIN",
     "SHOPIFY_ADMIN_TOKEN",
-    "CRM_BASE_URL",
-    "CRM_API_SECRET",
 )
+# CRM-ul este optional: fara CRM_BASE_URL se leaga porturi care nu fac nimic.
+# EC_QUOTE_MODEL este optional: modulul agent are un model implicit.
+
+
+_STAFF_NAME = re.compile(r"[A-Za-z0-9_.-]{1,40}")
 
 
 class SettingsError(RuntimeError):
@@ -74,6 +77,10 @@ class Settings(BaseModel):
     rate_messages_per_ip_per_minute: int = 60
     rate_uploads_per_session_per_hour: int = 10
     rate_polls_per_session_per_minute: int = 30
+    rate_assist_per_token_per_minute: int = 60
+
+    # Extensia Chrome (mod asistat): perechi (nume coleg, token). Goala: rutele /v1/assist/* refuza tot.
+    assist_tokens: tuple[tuple[str, SecretStr], ...] = ()
 
     # Integrari (folosite de modulele surori)
     calculator_base_url: str = ""
@@ -115,6 +122,20 @@ def load_settings(env: Mapping[str, str] | None = None, *,
     for name in required:
         if not get(name):
             missing.append(name)
+    if require_integrations and get("CRM_BASE_URL") and not get("CRM_API_SECRET"):
+        missing.append("CRM_API_SECRET")
+
+    assist_tokens: list[tuple[str, SecretStr]] = []
+    for pair in _csv(get("EC_QUOTE_ASSIST_TOKENS")):
+        staff, _, token = pair.partition(":")
+        staff, token = staff.strip(), token.strip()
+        known = [n for n, _ in assist_tokens] + [t.get_secret_value() for _, t in assist_tokens]
+        if (not _STAFF_NAME.fullmatch(staff) or len(token) < MIN_SECRET_LENGTH
+                or staff in known or token in known):
+            invalid.append(f"EC_QUOTE_ASSIST_TOKENS (perechi nume:token unice, token de minim "
+                           f"{MIN_SECRET_LENGTH} caractere)")
+            break
+        assist_tokens.append((staff, SecretStr(token)))
 
     inbound = get("EC_QUOTE_INBOUND_SECRET")
     if inbound and len(inbound) < MIN_SECRET_LENGTH:
@@ -153,6 +174,8 @@ def load_settings(env: Mapping[str, str] | None = None, *,
             number("EC_QUOTE_RATE_UPLOADS_PER_SESSION_HOUR", 10, minimum=1),
         "rate_polls_per_session_per_minute":
             number("EC_QUOTE_RATE_POLLS_PER_SESSION_MINUTE", 30, minimum=1),
+        "rate_assist_per_token_per_minute":
+            number("EC_QUOTE_RATE_ASSIST_PER_TOKEN_MINUTE", 60, minimum=1),
     }
 
     origins = _csv(get("EC_QUOTE_CORS_ORIGINS"))
@@ -182,6 +205,7 @@ def load_settings(env: Mapping[str, str] | None = None, *,
         demo=_flag(get("EC_QUOTE_DEMO")),
         chat_require_secret=_flag(get("EC_QUOTE_CHAT_REQUIRE_SECRET")),
         git_commit=get("GIT_COMMIT") or None,
+        assist_tokens=tuple(assist_tokens),
         attachment_hosts=tuple(h.lower() for h in _csv(get("EC_QUOTE_ATTACHMENT_HOSTS"))),
         allowed_mimes=tuple(m.lower() for m in _csv(get("EC_QUOTE_ALLOWED_MIMES")))
         or DEFAULT_ALLOWED_MIMES,
