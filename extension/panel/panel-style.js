@@ -89,6 +89,7 @@ tbody tr + tr td { border-top: 1px solid var(--border); }
 tbody tr[data-highlighted="true"] td { background: var(--accent-soft); font-weight: 600; }
 tbody tr[data-highlighted="true"] td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .line-label { display: block; color: var(--muted); font-weight: 400; font-size: 11.5px; overflow-wrap: anywhere; }
+.table-title { margin: 0 0 6px; font-weight: 600; overflow-wrap: anywhere; }
 .caption { margin: 5px 0 0; color: var(--muted); font-size: 11.5px; }
 
 .image-box { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-soft); }
@@ -124,6 +125,7 @@ tbody tr[data-highlighted="true"] td:first-child { box-shadow: inset 3px 0 0 var
 .notice[data-tone="error"] { background: var(--danger-soft); color: var(--danger); }
 
 .attach { border-top: 1px solid var(--border); padding-top: 14px; }
+.attach > .btn { width: 100%; }
 .attach-info { margin: 0 0 8px; overflow-wrap: anywhere; }
 .drop { margin-top: 8px; border: 1.5px dashed var(--border-strong); border-radius: 8px; padding: 11px; text-align: center; color: var(--muted); font-size: 12.5px; }
 .drop[data-over="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }

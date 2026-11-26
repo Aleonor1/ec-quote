@@ -1,0 +1,11 @@
+{
+  "_note": "Reguli de validare și de căutare pentru baza de cunoștințe. Se schimbă aici, nu în cod.",
+  "min_score": 0.55,
+  "max_answer_chars": 420,
+  "max_query_chars": 1000,
+  "forbidden_words": [
+    "garantat", "garantam", "garantie pe viata", "pe viata", "100%", "indestructibil", "nu se dezlipesc niciodata",
+    "netoxic", "certificat alimentar", "sigur alimentar", "biodegradabil", "ecologic", "cel mai ieftin",
+    "cei mai ieftini", "cel mai bun pret"
+  ]
+}

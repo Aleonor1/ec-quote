@@ -163,7 +163,13 @@ test('an aborted request rejects with "aborted"', async () => {
 
 test('a request that exceeds the timeout rejects with "timeout"', async () => {
   const api = client(hangingFetch, { timeouts: { ping: 20, suggest: 20, upload: 20, paymentLink: 20, image: 20 } });
-  await assert.rejects(api.ping(), { code: 'timeout' });
+  // AbortSignal.timeout does not keep Node's event loop alive on its own.
+  const keepAlive = setTimeout(() => {}, 2000);
+  try {
+    await assert.rejects(api.ping(), { code: 'timeout' });
+  } finally {
+    clearTimeout(keepAlive);
+  }
 });
 
 test('missing configuration fails before any request', async () => {

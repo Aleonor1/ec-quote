@@ -5,9 +5,9 @@
   "type": "module",
   "description": "Dev-only manifest: the extension itself has no build step and no dependencies.",
   "scripts": {
-    "test": "node --test tests/unit/ tests/browser/",
-    "test:unit": "node --test tests/unit/",
-    "test:browser": "node --test tests/browser/",
+    "test": "node --test \"tests/unit/*.test.mjs\" \"tests/browser/*.test.mjs\"",
+    "test:unit": "node --test \"tests/unit/*.test.mjs\"",
+    "test:browser": "node --test \"tests/browser/*.test.mjs\"",
     "assets": "node tools/make-assets.mjs"
   }
 }

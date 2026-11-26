@@ -230,7 +230,7 @@
     function autoSize() {
       if (!textarea) return;
       textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(300, Math.max(96, textarea.scrollHeight + 2))}px`;
+      textarea.style.height = `${Math.min(230, Math.max(96, textarea.scrollHeight + 2))}px`;
     }
 
     function setImageBlob(blob) {
@@ -258,20 +258,25 @@
     }
 
     function offerTable(lines) {
-      const rows = lines.map((line) =>
-        el(
+      // A label shared by every row is shown once, above the table.
+      const labels = new Set(lines.map((line) => line.label));
+      const shared = labels.size === 1 ? lines[0].label : '';
+      const rows = lines.map((line) => {
+        const showLabel = !shared && line.label && line.quantity && line.label !== line.quantity;
+        return el(
           'tr',
           { data: { highlighted: line.highlighted ? 'true' : 'false' } },
-          el('td', {}, el('span', { text: line.quantity || line.label }), line.label && line.quantity && line.label !== line.quantity ? el('span', { class: 'line-label', text: line.label }) : null),
+          el('td', {}, el('span', { text: line.quantity || line.label }), showLabel ? el('span', { class: 'line-label', text: line.label }) : null),
           el('td', { text: money(line.unit_price) }),
           el('td', { text: money(line.total_ex_vat) }),
           el('td', { text: money(line.total) }),
-        ),
-      );
+        );
+      });
       return el(
         'div',
         {},
         el('h3', { class: 'label', text: 'Variante de preț' }),
+        shared ? el('p', { class: 'table-title', text: shared }) : null,
         el(
           'div',
           { class: 'table-wrap' },
@@ -282,7 +287,7 @@
             el('tbody', {}, rows),
           ),
         ),
-        el('p', { class: 'caption', text: 'Valori în lei, calculate de server. Rândul evidențiat este varianta recomandată.' }),
+        el('p', { class: 'caption', text: 'Valori în lei, primite de la server.' }),
       );
     }
 
@@ -342,6 +347,22 @@
         );
       }
 
+      if (suggestion.payment_url) {
+        parts.push(
+          el(
+            'div',
+            {},
+            el('h3', { class: 'label', text: 'Link de plată' }),
+            el(
+              'div',
+              { class: 'pay' },
+              el('span', { class: 'pay-url', text: suggestion.payment_url }),
+              button('Copiază linkul', 'small', () => copyText(suggestion.payment_url, 'Linkul de plată a fost copiat.')),
+            ),
+          ),
+        );
+      }
+
       textarea = null;
       if (hasText) {
         textarea = el('textarea', { id: 'ecq-text', spellcheck: 'true', lang: 'ro', 'aria-describedby': 'ecq-text-hint' });
@@ -394,22 +415,6 @@
       if (suggestion.image_url) {
         renderImage(state.imageBlob ? 'ready' : 'loading');
         parts.push(imageSlot);
-      }
-
-      if (suggestion.payment_url) {
-        parts.push(
-          el(
-            'div',
-            {},
-            el('h3', { class: 'label', text: 'Link de plată' }),
-            el(
-              'div',
-              { class: 'pay' },
-              el('span', { class: 'pay-url', text: suggestion.payment_url }),
-              button('Copiază linkul', 'small', () => copyText(suggestion.payment_url, 'Linkul de plată a fost copiat.')),
-            ),
-          ),
-        );
       }
 
       view.replaceChildren(...parts);

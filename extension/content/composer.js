@@ -39,8 +39,10 @@
     if (!value) return { ok: false, reason: 'empty' };
 
     const before = normalize(composerText(composer));
+    // An empty box is replaced as a whole so the text lands inside the editor's paragraph.
+    const atEnd = mode !== 'replace' && Boolean(before);
     composer.focus();
-    selectContents(composer, mode !== 'replace');
+    selectContents(composer, atEnd);
 
     dispatchPaste(composer, value);
     await nextFrame();
@@ -49,7 +51,7 @@
     if (after === before || !after.includes(normalize(value).slice(0, 40))) {
       // Fallback for editors that ignore synthetic paste events.
       composer.focus();
-      selectContents(composer, mode !== 'replace');
+      selectContents(composer, atEnd);
       try {
         composer.ownerDocument.execCommand('insertText', false, value);
       } catch {
