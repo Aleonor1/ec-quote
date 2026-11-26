@@ -267,7 +267,7 @@ def check(expect: dict, suggestion: AssistSuggestion, tools: list[str], sourced:
     for amount in money_mentions(suggestion.text):
         if amount is None or not any(amount.quantize(Decimal("0.01")) == s.quantize(Decimal("0.01")) for s in sourced):
             failures.append(f"suma fara sursa in text: {amount}")
-    if "—" in suggestion.text:
+    if chr(0x2014) in suggestion.text:
         failures.append("textul contine linie de pauza")
     return failures
 

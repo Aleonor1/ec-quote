@@ -250,7 +250,7 @@ def unpriced_hint(reason: str, details: dict) -> str:
         "size_below_minimum": f"Dimensiunea este sub minimul produsului{': ' + value('minCm') + ' cm' if value('minCm') else ''}. Propune dimensiunea minima sau intreaba ce dimensiune doreste.",
         "size_above_maximum": f"Dimensiunea depaseste maximul produsului{': ' + value('maxCm') + ' cm' if value('maxCm') else ''}. Propune maximul sau preda unui coleg pentru o lucrare speciala.",
         "quantity_below_minimum": f"Cantitatea este sub comanda minima{': ' + value('minQuantity') + ' buc' if value('minQuantity') else ''}. Ofera pretul pentru cantitatea minima.",
-        "quantity_above_maximum": f"Cantitatea depaseste maximul din calculator{': ' + value('maxQuantity') + ' buc' if value('maxQuantity') else ''}. Preda unui coleg (handoff, value_over_threshold nu se alege de tine; foloseste not_in_calculator).",
+        "quantity_above_maximum": f"Cantitatea depaseste maximul din calculator{': ' + value('maxQuantity') + ' buc' if value('maxQuantity') else ''}. Preda unui coleg (handoff cu not_in_calculator).",
         "urgency_quantity_exceeded": f"Regimul de urgenta este disponibil numai pana la{' ' + value('maxQuantity') + ' buc' if value('maxQuantity') else ' o cantitate limita'}. Ofera pretul fara urgenta sau preda unui coleg.",
         "option_unavailable": f"Optiunea {option or 'ceruta'} nu este disponibila la acest produs. Ofera pretul fara ea si spune-i clientului.",
         "unknown_add_on": f"Optiunea {option or 'ceruta'} nu exista in catalog pentru acest produs. Alege din catalog sau renunta la ea.",
