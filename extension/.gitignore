@@ -1,0 +1,3 @@
+# The repository ignores *.png; the extension needs its icons and the test image.
+!icons/*.png
+!tests/fixtures/*.png

@@ -307,7 +307,7 @@
     let key = null;
     if (digits) key = digits;
     else if (jid) key = jid;
-    else if (name) key = `titlu:${hashText(name)}`;
+    else if (name) key = `titlu-${hashText(name)}`;
 
     return {
       open: true,
