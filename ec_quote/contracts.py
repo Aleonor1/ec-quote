@@ -15,7 +15,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
-Channel = Literal["whatsapp", "site"]
+Channel = Literal["whatsapp", "site"]  # "whatsapp" = conversatie din WhatsApp Web, asistata de extensie
 
 
 # ---------- pret ----------
@@ -165,6 +165,8 @@ class HandoffReason(str, Enum):
     VALUE_OVER_THRESHOLD = "value_over_threshold"
     SPECIAL_TERMS = "special_terms"       # reducere, termen sub standard, facturare speciala
     COMPLAINT = "complaint"
+    OFFER_LIMIT = "offer_limit"
+    OFFER_REJECTED = "offer_rejected"
     FILE_UNUSABLE = "file_unusable"
     CUSTOMER_ASKED = "customer_asked"
     NOT_UNDERSTOOD = "not_understood"
@@ -185,6 +187,7 @@ class Attachment(BaseModel):
 
 class InboundMessage(BaseModel):
     contact: Contact
+    message_id: str | None = None   # id stabil al mesajului, pentru deduplicare
     text: str = ""
     button_id: str | None = None
     attachments: list[Attachment] = Field(default_factory=list)
@@ -211,7 +214,42 @@ class OutboundAction(BaseModel):
 class Engine(Protocol):
     def handle(self, message: InboundMessage) -> list[OutboundAction]: ...
 
-    def approve(self, approval_id: str, approved_by: str, now: datetime) -> list[OutboundAction]:
+    def approve(self, approval_id: str, approved_by: str, now: datetime,
+                edited_text: str | None = None) -> list[OutboundAction]:
         """Mod umbra: omul aproba oferta pregatita; intoarce actiunile de trimis."""
 
     def reject(self, approval_id: str, rejected_by: str, now: datetime) -> None: ...
+
+
+# ---------- mod asistat (extensia Chrome pentru WhatsApp Web) ----------
+# Extensia citeste conversatia deschisa si cere o sugestie. Nimic nu pleaca automat:
+# omul insereaza textul in caseta WhatsApp si apasa el Trimite.
+
+class AssistMessage(BaseModel):
+    id: str                               # id-ul mesajului din WhatsApp Web (stabil)
+    direction: Literal["in", "out"]       # in = client, out = noi (om)
+    text: str = ""
+    sent_at: datetime | None = None
+    attachments: list[Attachment] = Field(default_factory=list)
+
+
+class AssistSuggestion(BaseModel):
+    suggestion_id: str
+    kind: Literal["reply", "question", "offer", "needs_human", "none"]
+    text: str = ""                        # textul propus, gata de inserat
+    options: list[str] = Field(default_factory=list)   # variante scurte de raspuns asteptate de la client
+    image_path: str | None = None         # imaginea de oferta / mockup, de atasat manual
+    note_for_staff: str = ""              # de ce (ex. peste prag, fisier slab); nu se trimite clientului
+    handoff_reason: HandoffReason | None = None
+    offer_lines: list[OfferLine] = Field(default_factory=list)
+    can_create_payment_link: bool = False
+    payment_url: str | None = None
+
+
+class AssistEngine(Protocol):
+    def suggest(self, contact: Contact, messages: list[AssistMessage], now: datetime) -> AssistSuggestion:
+        """Primeste conversatia vizibila (idempotent dupa id-urile mesajelor) si intoarce sugestia curenta."""
+
+    def create_payment_link(self, suggestion_id: str, staff: str, now: datetime,
+                            edited_text: str | None = None) -> AssistSuggestion:
+        """Omul accepta oferta: creeaza Draft Order si intoarce textul final cu linkul de plata."""
