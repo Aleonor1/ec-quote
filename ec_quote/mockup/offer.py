@@ -46,7 +46,7 @@ def clean_text(text: str) -> str:
     out = []
     for ch in unicodedata.normalize("NFC", text or ""):
         cat = unicodedata.category(ch)
-        if ch in "‒–—―−":
+        if ch in "\u2012\u2013\u2014\u2015\u2212":
             out.append("-")
         elif cat.startswith("Z") or ch in "\t\n\r":
             out.append(" ")
@@ -206,39 +206,50 @@ def _hero(mockup_path: str, size: tuple[int, int]) -> Image.Image:
     return hero
 
 
-def _content_height(content: OfferContent, row_h: int, with_title: bool) -> int:
+def _content_height(content: OfferContent, row_h: int, with_title: bool, info_lines: int = 2) -> int:
     n = len(content.rows)
     subtitle = 84 if content.subtitle else 0
-    return 36 + (54 if with_title else 0) + subtitle + 26 + 34 + n * row_h + (n - 1) * 10 + 30 + 2 * 44 + 16
+    table = 26 + 34 + n * row_h + (n - 1) * 10
+    return 36 + (54 if with_title else 0) + subtitle + table + 20 + info_lines * 36 + 16 + 26
 
 
 def render_offer(mockup_path: str | None, lines: list[OfferLine], production_term: str,
                  valid_until: datetime) -> Image.Image:
     content = build_content(lines, production_term, valid_until)
     width, height = OFFER_SIZE
-    n = len(content.rows)
     body_bottom = height - _FOOTER_H
-
-    # inaltimi: mockupul primeste ce ramane dupa tabel
-    row_h = 96 if mockup_path is None else 88
-    if mockup_path is None:
-        while _content_height(content, row_h, False) > body_bottom - 250 and row_h > 60:
-            row_h -= 4
-        # antetul de brand preia spatiul liber
-        top_h = max(250, min(470, body_bottom - _content_height(content, row_h, False) - 40))
-    else:
-        while True:
-            top_h = min(600, body_bottom - _content_height(content, row_h, True))
-            if top_h >= 320 or row_h <= 60:
-                break
-            row_h -= 4
-        top_h = max(top_h, 200)
 
     img = Image.new("RGB", (width * _S, height * _S), _PAPER)
     draw = ImageDraw.Draw(img)
 
     def px(v: float) -> int:
         return round(v * _S)
+
+    inner_w = width - 2 * _MARGIN
+    regular, bold = _font(25), _font(25, True)
+    info = []
+    for label, value, max_lines in ((TERM_LABEL, content.term, 2), (VALID_LABEL, content.valid_until, 1)):
+        words = [(w, regular) for w in label.split()] + [(w, bold) for w in value.split()]
+        info.append(_wrap(draw, words, px(inner_w), max_lines))
+    info_lines = sum(len(block) for block in info)
+    titled = mockup_path is not None
+
+    def needed() -> int:
+        return _content_height(content, row_h, titled, info_lines)
+
+    # inaltimi: mockupul (sau antetul de brand) primeste ce ramane dupa tabel
+    row_h = 88 if titled else 96
+    if not titled:
+        while needed() > body_bottom - 250 and row_h > 60:
+            row_h -= 4
+        top_h = max(250, min(560, body_bottom - needed() - 24))
+    else:
+        while True:
+            top_h = min(600, body_bottom - needed())
+            if top_h >= 320 or row_h <= 60:
+                break
+            row_h -= 4
+        top_h = max(top_h, 200)
 
     if mockup_path is None:
         draw.rectangle((0, 0, px(width), px(top_h)), fill=_NAVY)
@@ -250,9 +261,8 @@ def render_offer(mockup_path: str | None, lines: list[OfferLine], production_ter
         img.paste(_hero(mockup_path, (px(width), px(top_h))), (0, 0))
         draw.rectangle((0, px(top_h), px(width), px(top_h + 6)), fill=_LIME)
 
-    inner_w = width - 2 * _MARGIN
-    free = body_bottom - top_h - _content_height(content, row_h, mockup_path is not None)
-    y = top_h + 36 + max(0, free) // 2
+    free = body_bottom - top_h - needed()
+    y = top_h + 36 + (max(0, free) // 2 if titled else 0)
 
     if mockup_path is not None:
         draw.text((px(_MARGIN), px(y + 42)), TITLE, font=_font(44, True), fill=_NAVY, anchor="ls")
@@ -300,12 +310,11 @@ def render_offer(mockup_path: str | None, lines: list[OfferLine], production_ter
         y += row_h + 10
     y += 20
 
-    regular, bold = _font(25), _font(25, True)
-    for label, value in ((TERM_LABEL, content.term), (VALID_LABEL, content.valid_until)):
-        words = [(w, regular) for w in label.split()] + [(w, bold) for w in value.split()]
-        line = _wrap(draw, words, px(inner_w), 1)[0]
-        _draw_words(draw, px(_MARGIN), px(y + 30), line, _NAVY)
-        y += 44
+    for block in info:
+        for line in block:
+            _draw_words(draw, px(_MARGIN), px(y + 30), line, _NAVY)
+            y += 36
+        y += 8
 
     draw.rectangle((0, px(body_bottom), px(width), px(height)), fill=_NAVY)
     draw.rounded_rectangle((px(_MARGIN), px(body_bottom + 34), px(_MARGIN + 8), px(height - 34)),

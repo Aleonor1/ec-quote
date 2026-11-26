@@ -11,6 +11,8 @@ from ec_quote.mockup.offer import (
     BRAND, HEADERS, OFFER_SIZE, REQUESTED_TAG, TITLE, VALID_LABEL, build_content, clean_text, render_offer,
 )
 
+from .conftest import pixels
+
 VALID = datetime(2026, 12, 3, 18, 0)
 TERM = "3-5 zile lucrătoare"
 LABEL = "Etichete hârtie lucioasă 8 x 6 cm"
@@ -40,7 +42,7 @@ def _near(pixel, colour, tol=14):
 
 def _count(image, colour, box):
     crop = image.crop(box)
-    return sum(1 for p in crop.getdata() if _near(p, colour))
+    return sum(1 for p in pixels(crop) if _near(p, colour))
 
 
 @pytest.mark.parametrize("count", [1, 2, 3])
@@ -64,7 +66,7 @@ def test_offer_image_size_for_1_2_3_lines(tmp_path, mockup, count, with_mockup):
 def test_highlighted_row_is_emphasized_and_others_are_not(tmp_path):
     plain = render_offer(None, [line(500, "1", "2", "3"), line(1000, "1", "2", "3")], TERM, VALID)
     marked = render_offer(None, [line(500, "1", "2", "3"), line(1000, "1", "2", "3", True)], TERM, VALID)
-    body = (56, 480, 1024, 1250)
+    body = (56, 600, 1024, 1250)
     assert _count(plain, NAVY, body) < 12000
     assert _count(marked, NAVY, body) > 60000
     first = render_offer(None, [line(500, "1", "2", "3", True), line(1000, "1", "2", "3")], TERM, VALID)
@@ -105,7 +107,7 @@ def test_static_text_is_romanian_with_diacritics_and_no_long_dashes():
     assert VALID_LABEL == "Ofertă valabilă până la"
     assert HEADERS == ("Cantitate", "Preț / buc", "Total fără TVA", "Total cu TVA")
     text = " ".join(build_content(LINES, TERM, VALID).all_text())
-    assert "—" not in text and "–" not in text
+    assert "\u2014" not in text and "\u2013" not in text
     assert "Ofertă valabilă până la" in text and "3 decembrie 2026" in text
 
 
@@ -129,7 +131,7 @@ def test_long_labels_and_terms_do_not_crash_or_overflow(tmp_path, mockup):
             assert image.size == OFFER_SIZE
             # marginea din dreapta ramane libera in zona de text
             edge = image.crop((1040, 640, 1080, 1250))
-            assert all(_near(p, (250, 250, 252), 6) for p in edge.getdata())
+            assert all(_near(p, (250, 250, 252), 6) for p in pixels(edge))
 
 
 def test_many_lines_shrink_and_too_many_fail(mockup):
@@ -143,8 +145,8 @@ def test_many_lines_shrink_and_too_many_fail(mockup):
 
 
 def test_clean_text_strips_emoji_controls_and_long_dashes():
-    assert clean_text("  3–5 zile — lucrătoare\n\t\U0001F600 ✨ok​ ") == "3-5 zile - lucrătoare ok"
-    assert clean_text("și ţ") == "și ţ"
+    assert clean_text("  3\u20135 zile \u2014 lucrătoare\n\t\U0001F600 \u2728ok\u200b ") == "3-5 zile - lucrătoare ok"
+    assert clean_text("s\u0326i t\u0327") == "și ţ"
     assert clean_text(None) == ""
 
 
@@ -165,7 +167,7 @@ def test_tall_mockup_is_shown_whole_on_a_soft_backdrop(tmp_path):
     image.save(tall, quality=95)
     offer = render_offer(str(tall), LINES, TERM, VALID)
     # banda verde de sus a mockupului ramane vizibila, nu este taiata
-    assert any(p[1] > 120 and p[0] < 80 for p in offer.crop((440, 0, 640, 60)).getdata())
+    assert any(p[1] > 120 and p[0] < 80 for p in pixels(offer.crop((440, 0, 640, 60))))
     # lateralele sunt fundal estompat, nu mockup taiat
     assert not _near(offer.getpixel((60, 300)), (200, 60, 60), 20)
 

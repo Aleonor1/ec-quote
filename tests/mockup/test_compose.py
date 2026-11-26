@@ -151,7 +151,9 @@ def test_every_shipped_template_renders(tmp_path, solid_design, service, hint, t
     cy = round(sum(p[1] for p in quad) / 4)
     r, g, b = rgb.getpixel((cx, cy))
     assert r > 150 and g < 60 and b > 90   # magenta, cu lumina sablonului peste
-    assert all(abs(a - b) < 8 for a, b in zip(rgb.getpixel((20, 20)), (213, 210, 205)))
+    with Image.open(service.choose_template(hint).photo_path) as photo:
+        untouched = photo.convert("RGB").getpixel((20, 20))
+    assert all(abs(a - b) < 6 for a, b in zip(rgb.getpixel((20, 20)), untouched))
 
 
 def test_large_photo_is_scaled_to_1600(tmp_path, solid_design):
@@ -221,7 +223,8 @@ def test_cmyk_jpeg_and_palette_png_are_converted(tmp_path):
     Image.new("CMYK", (60, 40), (0, 255, 0, 0)).save(cmyk, "JPEG")
     assert load_design(cmyk).mode == "RGBA"
     pal = tmp_path / "p.png"
-    Image.new("RGB", (60, 40), MAGENTA).convert("P").save(pal, transparency=0)
+    indexed = Image.new("RGB", (60, 40), MAGENTA).convert("P")
+    indexed.save(pal, transparency=indexed.getpixel((0, 0)))
     assert has_transparency(load_design(pal))
 
 

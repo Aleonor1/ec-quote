@@ -25,6 +25,12 @@ def write_template(root: Path, template_id: str = "plat", *, size=(1000, 800), *
     return folder
 
 
+def pixels(image):
+    """Pixelii RGB ai imaginii, ca tupluri."""
+    data = image.convert("RGB").tobytes()
+    return list(zip(data[0::3], data[1::3], data[2::3]))
+
+
 @pytest.fixture
 def solid_design(tmp_path):
     path = tmp_path / "design.png"

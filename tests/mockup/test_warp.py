@@ -34,7 +34,7 @@ def test_degenerate_points_are_rejected():
 
 
 def test_quad_size_and_unrolled_width():
-    assert quad_size([(0, 0), (30, 0), (40, 50), (0, 40)]) == pytest.approx((40.0, math.hypot(10, 50)))
+    assert quad_size([(0, 0), (30, 0), (40, 50), (0, 40)]) == pytest.approx((math.hypot(40, 10), math.hypot(10, 50)))
     assert unrolled_width(100, None) == 100
     assert unrolled_width(100, 180 - 1e-9) == pytest.approx(100 * math.pi / 2, rel=1e-6)
     assert 100 < unrolled_width(100, 90) < 120

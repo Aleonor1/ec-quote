@@ -35,7 +35,7 @@ _CANDIDATES = {
 def renders_diacritics(font: ImageFont.ImageFont | ImageFont.FreeTypeFont) -> bool:
     """True daca fiecare diacritica are glif propriu (nu patratel, nu litera de baza)."""
     try:
-        missing = bytes(font.getmask("￿"))
+        missing = bytes(font.getmask("\uffff"))
         for ch in RO_DIACRITICS:
             glyph = font.getmask(ch)
             data = bytes(glyph)
