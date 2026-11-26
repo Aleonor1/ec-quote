@@ -1,67 +1,76 @@
-# Ofertare instant: planul revizuit după ce am citit codul
+# Ofertare asistată pe WhatsApp: planul revizuit
 
-26 noiembrie 2026. Pornește de la „Plan implementare: Ofertare instant pe site și WhatsApp”. Ținta rămâne aceeași: preț, mockup și link de plată în sub 5 minute, 24/7, pe WhatsApp și în chatul de pe site, cu un singur motor. Modelul doar înțelege și întreabă; orice cifră vine din unelte.
+26 noiembrie 2026. Înlocuiește varianta de dimineață. Pornește de la „Plan implementare: Ofertare instant pe site și WhatsApp” și de la decizia ta de azi: fără robot autonom pe WhatsApp.
 
-## Ce s-a schimbat față de planul inițial
+## Ce se schimbă
 
-| Planul presupunea | Ce există deja | Urmarea |
+Înainte: un asistent răspundea singur pe WhatsApp, prin CRM și Meta Cloud API, cu două săptămâni de mod umbră.
+
+Acum: o extensie de Chrome pe web.whatsapp.com, pentru tine și Roxana. Extensia citește conversația deschisă, cere serverului ec-quote o propunere și o arată lângă chat: răspunsul sugerat, prețul exact din calculator, treptele de cantitate, imaginea de ofertă și, la un click, linkul de plată Shopify. Omul apasă „Inserează”, citește, corectează dacă vrea și apasă Trimite. Nimic nu pleacă singur.
+
+Ce rămâne neschimbat: orice cifră vine din calculatorul site-ului, niciodată din model. Fără termene sub regulile de producție. Despre materiale doar afirmațiile aprobate. Cererile în afara regulilor (produs care nu e în calculator, peste prag, reducere, reclamație, fișier nefolosibil) apar ca „de văzut de om”, cu motivul, fără preț propus.
+
+## De ce e mai simplu și mai sigur
+
+- Nu mai atingem Meta: fără Cloud API, fără șabloane plătite, fără fereastra de 24h, fără plafon lunar. Numărul rămâne exact cum îl folosiți azi.
+- Nu mai depindem de CRM pentru mesaje. Legătura cu CRM-ul devine opțională și vine mai târziu, doar pentru lead-uri.
+- Fiecare mesaj e citit de un om înainte să plece. Modul umbră nu mai e o etapă, e felul de lucru.
+- Mai puțin de construit: dispar puntea CRM, descărcarea fișierelor din Meta, mesajele cu butoane, cardul de aprobare, trimiterea automată a urmăririlor.
+- Mai puține chei: nu mai trebuie nimic din Meta și nimic din CRM la început.
+
+## Riscul nou, spus direct
+
+WhatsApp Web nu are o interfață oficială pentru așa ceva și își schimbă pagina fără anunț. Când se schimbă, extensia poate să nu mai citească conversația până o actualizăm. De aceea: tot ce citește din pagină stă într-un singur fișier ușor de reparat, extensia are un autotest și, când nu poate citi sigur, spune asta și nu propune nimic. Lucrați în continuare normal, fără sugestii, până la actualizare.
+
+Extensia face doar trei lucruri în pagină: citește conversația deschisă, pune text în căsuța de mesaj și atașează imaginea de ofertă. Nu apasă Trimite, nu deschide alte conversații, nu trimite în masă. Orice automatizare peste atât e în afara proiectului, pentru că ar pune numărul în pericol față de regulile WhatsApp.
+
+## Epicile
+
+| Epic | Ce livrează | Unde |
 | --- | --- | --- |
-| Construim o unealtă de preț | Calculatorul dă prețul exact de pe site, de la server la server: `POST /api/sync/line` și `GET /api/sync/calculator-config` | Iese din E0. ec-quote doar îl cheamă. Rămâne un audit pe 50 de configurații. |
-| Construim verificarea fișierelor de la zero | Pentru PDF și AI există inspecția din calculator (`POST /api/sync/artwork-inspect`) și încărcarea în stocare (`POST /api/sync/upload-url`) | Pentru PDF refolosim. Pentru PNG și JPG verificarea se face în ec-quote (rezoluție la mărimea finală). |
-| ec-quote primește webhook-ul WhatsApp și ține numărul | CRM-ul are deja webhook-ul Meta, Coexistence cu aplicația de pe telefon, inboxul, șabloanele cu plafon lunar, drafturile AI și trimiterea automată cu fereastra de 24h și buton de oprire | Iese din E0 tot ce ține de Meta. ec-quote nu deține numărul. CRM-ul îi trimite mesajele și livrează răspunsurile. |
-| Aprobarea din modul umbră se construiește separat | CRM-ul are drafturi cu aprobă, editează, respinge | Aprobarea cu un click se face în inboxul CRM. |
-| Linia de tăiere se face pe server | Contur Studio calculează conturul numai în browser. Serverul face doar PDF-ul de producție dintr-un proof deja aprobat | Se adaugă o poveste în calculator (contur fără browser). Până atunci mockup-ul folosește un contur de previzualizare, nu de producție. Fără eliminare de fundal pe server: o poză cu fundal plin primește formă simplă sau merge la om. |
-| Chatul de pe site are nevoie de un secret | Un secret nu poate sta în browser | Chatul folosește sesiuni semnate, fără secret în pagină. Două drumuri posibile: direct către ec-quote (mai simplu) sau prin adresa magazinului, prin App Proxy-ul calculatorului (ec-quote rămâne ascuns). Blocul de chat din temă e același în ambele. |
+| E0 Fundația | Depozitul, serverul pornit pe o gazdă, cheile, acces la calculatorul real, auditul de preț pe 50 de configurații | ec-quote, story-1 la story-6 |
+| E1 Ofertare asistată în extensie (doar text) | Extensia citește conversația și arată sugestia: întrebarea de pus sau oferta cu preț și trepte; linkul de plată la un click | ec-quote (server și `extension/`), story-7 la story-14 |
+| E2 Fișier, mockup și imagine de ofertă | Extensia ia fișierul clientului din WhatsApp Web, serverul îl verifică, face mockup-ul și imaginea de ofertă, extensia o atașează la mesaj | ec-quote, story-15 la story-23; calculator-app pentru linia de tăiere (story-21) |
+| E3 Măsurare și reglaj | Comenzi plătite legate de oferte, cifrele de folosire, raportul săptămânal cu auditul de 20 de oferte, remindere pentru voi la 24h și 72h | ec-quote, story-24 la story-27 |
+| E4 Opțional | Lead-uri în CRM; chatul de pe site | ec-quote, CRM, calculator-app, story-28 la story-31 |
 
-Ce se adaugă în CRM (E3): puntea către ec-quote (trimite mesajul, livrează răspunsul), descărcarea fișierelor primite pe WhatsApp (azi CRM-ul păstrează doar identificatorul), mesaje cu butoane (azi există doar text, imagine și șablon), aprobarea ofertei în inbox, șablonul pentru urmărire.
+Urmăririle de la 24h și 72h devin remindere afișate vouă în extensie („oferta pentru X a rămas fără răspuns”). Voi decideți dacă scrieți.
 
-O corecție la urmărire: fereastra gratuită Meta e de 24h de la ultimul mesaj al clientului, iar oferta pleacă după acel mesaj. Deci și mesajul de la 24h după ofertă cade în afara ferestrei, nu doar cel de la 72h. Ori ambele merg ca șablon aprobat (plătit, sub plafonul lunar), ori primul se mută mai devreme, de exemplu la 20h.
+Chatul de pe site este deja scris în server, dar nu l-ai confirmat după schimbarea de azi. L-am lăsat ultimul, ca decizie deschisă.
 
-## Epicile revizuite
+## Cum măsurăm acum
 
-| Epic | Ce livrează | ec-quote | calculator-app | CRM |
-| --- | --- | --- | --- | --- |
-| E0 Fundația | Motorul pornește cap la cap cu toate modulele legate, reguli validate, stare care rezistă la repornire, securitate, instalare pe VPS | story-1 la story-5 | | |
-| E1 Preț și ofertă (întâi în chatul de pe site) | Preț exact, trepte de cantitate, oferta ca text și imagine, link de plată, predare la om, lead în CRM, urmărirea comenzilor plătite, urmărire la 24h și 72h, cifre și auditul săptămânal de 20 de oferte | story-6 la story-11, story-14 la story-17 | story-13 (blocul de chat din temă), story-12 (ruta de proxy, doar dacă alegi drumul prin magazin) | contractul punții (lead și predare) |
-| E2 Fișier și mockup | Verificarea fișierului, stocarea lui, șabloane foto reale, linie de tăiere, drumul complet cu fișier | story-18 la story-20, story-22, story-23 | story-21 (contur fără browser) | |
-| E3 Mod umbră pe WhatsApp | Mesajele WhatsApp ajung la motor, omul aprobă fiecare ofertă cu un click, 2 săptămâni | adaptări mici | | puntea, fișierele, butoanele, aprobarea, șablonul de 72h |
-| E4 Live | Trecerea pe autonom la 95% oferte aprobate neschimbate, monitorizare, oprire de urgență | comutatorul și alertele | chatul devine public | comutatorul și raportul |
-| E5 Optimizare continuă | Auditul săptămânal, ajustarea întrebărilor, mockup premium la cerere | după E4 | | |
-
-Higgsfield rămâne doar pentru mockup premium la cerere, cu om în buclă. Nu intră în drumul automat.
+- Timpul de la mesajul clientului până la sugestie.
+- Câte sugestii pleacă neschimbate, câte editate, câte ignorate.
+- Conversia din ofertă în comandă.
+- Zero greșeli de preț, verificat săptămânal pe 20 de oferte.
+- Costul lunar al modelului.
 
 ## Ce am nevoie de la tine
 
+Chei și acces (doar numele; valorile le pui tu pe server, nu în depozit și nu în chat):
+
+1. `CALCULATOR_SYNC_SECRET`: aceeași valoare ca `QUOTE_SYNC_SECRET` din calculator.
+2. `ANTHROPIC_API_KEY` și modelul ales (`EC_QUOTE_MODEL`).
+3. `SHOPIFY_SHOP_DOMAIN` și `SHOPIFY_ADMIN_TOKEN`: o aplicație personalizată în Shopify cu `write_draft_orders`, plus citire la produse și comenzi.
+4. O gazdă pentru server (un VPS) și un subdomeniu, de exemplu `oferta.etichetecreative.ro`.
+5. Numele celor care folosesc extensia (acum: Aleonor, Roxana). Fiecare primește un token propriu, ca să știm cine a generat fiecare ofertă și să putem opri un singur token.
+6. Textul termenului de producție, standard și urgent, exact cum vrei să apară în mesaje. Fără el, sugestiile nu spun niciun termen.
+
 Decizii:
 
-1. Pragul de valoare peste care oferta merge la om. Acum: 3000 lei fără TVA.
-2. Valabilitatea ofertei (acum 7 zile) și dacă urmărirea de la 72h vine cu un stimulent. Dacă da, care, și el trebuie să existe în Shopify, altfel nu îl spunem.
-3. Produsele de la lansare. Propunere: doar etichetele și stickerele din calculator. Bannerele, mesh-ul și pachetele fixe merg la om.
-4. Găzduirea: care VPS, ce domeniu (de exemplu `quote.etichetecreative.ro`).
-5. Tonul și dacă asistentul se prezintă de la primul mesaj ca fiind automat. Oricum recunoaște când e întrebat.
-6. Termenele de producție pe care are voie să le spună (standard și urgent). Lipsesc din `config/rules.json`; fără ele nu spune niciun termen.
-7. Lista de afirmații despre materiale. Acum sunt trei în `config/rules.json`; completeaz-o sau confirm-o.
-8. Câte zile păstrăm conversațiile și fișierele clienților.
-9. Urmărirea: primul mesaj rămâne la 24h (șablon plătit) sau îl mutăm la 20h (gratuit, în fereastră).
-10. Drumul chatului de pe site: direct către ec-quote sau prin adresa magazinului (App Proxy).
-11. Chatul de pe site, în perioada de test: vizibil doar cu un link special, sau public din prima zi cu aprobare la fiecare ofertă.
-
-Chei și acces (doar numele; valorile le pui tu în `.env` pe VPS, nu în depozit și nu în chat):
-
-- `CALCULATOR_SYNC_SECRET`: aceeași valoare ca `QUOTE_SYNC_SECRET` din calculator.
-- `ANTHROPIC_API_KEY` și `EC_QUOTE_MODEL`.
-- `SHOPIFY_SHOP_DOMAIN` și `SHOPIFY_ADMIN_TOKEN`: o aplicație personalizată în Shopify cu drept de scriere la comenzi ciornă și de citire la produse și comenzi.
-- `CRM_BASE_URL` și `CRM_API_SECRET`.
-- `EC_QUOTE_INBOUND_SECRET`: îl generezi tu; aceeași valoare se pune în CRM (și în calculator, doar dacă alegi drumul prin magazin).
-- `EC_QUOTE_CORS_ORIGINS`: adresa magazinului; nu e secret.
-- Acces SSH la VPS și un subdomeniu cu certificat.
-- 10 până la 15 fotografii proprii pentru șabloanele de mockup (borcan, sticlă, pahar, cutie, pungă, laptop și ce mai vinzi des), fără etichetă pe ele.
-- În Meta: aprobarea șablonului pentru mesajele de urmărire (îl propunem în E3).
-
-## Cum măsurăm
-
-Primul răspuns sub 1 minut. Oferta completă sub 5 minute. Conversia din ofertă în comandă: întâi măsurăm punctul de plecare, apoi ținta e +50%. Sub 30% din conversații predate unui om. Zero greșeli de preț, verificat săptămânal pe 20 de oferte. Cost sub aproximativ 100 EUR pe lună la 300 de cereri.
+1. Pragul peste care oferta e „de văzut de om”. Acum: 3000 lei fără TVA.
+2. Valabilitatea ofertei. Acum: 7 zile.
+3. Produsele: doar etichetele și stickerele din calculator, restul „de văzut de om”?
+4. Confirmă sau completează lista de afirmații despre materiale din `config/rules.json`.
+5. Câte zile păstrăm pe server conversațiile și fișierele clienților.
+6. Dacă un client întreabă „vorbesc cu un robot?”: propunerea e ca extensia să nu sugereze nimic și să răspundeți voi.
+7. Instalarea extensiei: manual din dosar la început, apoi listare privată în Chrome Web Store (cere un cont de dezvoltator Google, taxă unică de 5 USD).
+8. Refacerea geometriei din Contur Studio ca să putem calcula linia de tăiere pe server (story-21). Până atunci mockup-ul arată un contur orientativ.
+9. Chatul de pe site: îl mai vrei? Dacă da, rămâne în E4.
+10. Lead-urile în CRM: le vrei, și când?
+11. 10 până la 15 fotografii proprii pentru mockup-uri, fără etichetă pe produs, plus logo și culori pentru imaginea de ofertă.
 
 ## Ordinea de lucru
 
-E0, apoi E1 și E2 în paralel pe chatul de pe site, apoi E3 (două săptămâni de mod umbră pe WhatsApp), apoi E4. Fiecare epic se oprește la un pull request pe care îl îmbini tu.
+E0, apoi E1. E2 poate începe în paralel cu partea de extensie din E1. E3 după ce există oferte reale. E4 doar dacă îl ceri. Fiecare epic se oprește la un pull request pe care îl îmbini tu.

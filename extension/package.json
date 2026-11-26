@@ -1,0 +1,13 @@
+{
+  "name": "ec-quote-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dev-only manifest: the extension itself has no build step and no dependencies.",
+  "scripts": {
+    "test": "node --test tests/unit/ tests/browser/",
+    "test:unit": "node --test tests/unit/",
+    "test:browser": "node --test tests/browser/",
+    "assets": "node tools/make-assets.mjs"
+  }
+}

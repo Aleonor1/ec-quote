@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "EC Quote Asistent WhatsApp",
+  "short_name": "EC Quote",
+  "version": "0.1.0",
+  "description": "Sugestii de răspuns și oferte pentru conversațiile WhatsApp Web ale Etichete Creative. Fiecare mesaj este trimis de operator.",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "clipboardWrite"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": [
+        "content/selectors.js",
+        "content/composer.js",
+        "content/media.js",
+        "panel/panel-style.js",
+        "panel/panel.js",
+        "content/main.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_title": "EC Quote: opțiuni",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https: http://localhost:* http://127.0.0.1:*; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+  }
+}

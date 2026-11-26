@@ -13,11 +13,13 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, Field
 
 from ec_quote.contracts import (
-    Attachment, Contact, FileReport, OfferLine, PriceQuote, TierOffer,
+    AssistSuggestion, Attachment, Contact, FileReport, OfferLine, PriceQuote, TierOffer,
 )
 
 Status = Literal["collecting", "offer_pending_approval", "offer_sent", "manual", "closed"]
 ApprovalStatus = Literal["pending", "approved", "rejected", "superseded"]
+SuggestionStatus = Literal["pending", "superseded", "linked"]
+SuggestionOutcome = Literal["exact", "edited", "ignored"]
 
 
 class ConversationState(BaseModel):
@@ -41,6 +43,19 @@ class ConversationState(BaseModel):
     offer_times: list[datetime] = Field(default_factory=list)
     pending_approval_id: str | None = None
     last_approval_id: str | None = None
+    assist_seen: list[str] = Field(default_factory=list)   # id-urile mesajelor deja procesate in mod asistat
+    last_suggestion_id: str | None = None
+    payment_links: dict[str, str] = Field(default_factory=dict)   # quote_id -> link deja creat
+
+
+class KnowledgeGap(BaseModel):
+    """O intrebare pentru care baza de cunostinte nu a avut raspuns aprobat."""
+
+    channel: str
+    key: str
+    question: str      # mesajul clientului
+    query: str         # ce a cautat modelul
+    at: datetime
     manual_since: datetime | None = None
     last_message_at: datetime | None = None
     first_inbound_at: datetime | None = None
@@ -75,6 +90,27 @@ class Approval(BaseModel):
     human_changed: bool | None = None
 
 
+class Suggestion(BaseModel):
+    """Sugestia aratata omului in mod asistat, cu ce s-a intamplat cu ea."""
+
+    id: str
+    channel: str
+    key: str
+    status: SuggestionStatus = "pending"
+    created_at: datetime
+    basis_message_id: str | None = None   # ultimul mesaj al clientului la care raspunde
+    suggestion: AssistSuggestion
+    quotes: list[PriceQuote] = Field(default_factory=list)   # liniile ofertei, din calculator
+    offer_text: str = ""       # textul ofertei fara link, folosit la crearea linkului de plata
+    language: str = "ro"
+    valid_until: datetime | None = None
+    artwork_url: str | None = None
+    latency_s: float | None = None
+    outcome: SuggestionOutcome | None = None   # ce a trimis omul fata de textul propus
+    linked_by: str | None = None
+    linked_at: datetime | None = None
+
+
 class ConversationStore(Protocol):
     def load(self, channel: str, key: str) -> ConversationState | None: ...
 
@@ -91,6 +127,16 @@ class ConversationStore(Protocol):
 
     def get_approval(self, approval_id: str) -> Approval | None: ...
 
+    def save_suggestion(self, suggestion: Suggestion) -> None: ...
+
+    def get_suggestion(self, suggestion_id: str) -> Suggestion | None: ...
+
+    def list_suggestions(self, channel: str, key: str) -> list[Suggestion]: ...
+
+    def add_gap(self, gap: KnowledgeGap) -> None: ...
+
+    def list_gaps(self, since: datetime | None = None) -> list[KnowledgeGap]: ...
+
 
 class InMemoryStore:
     def __init__(self) -> None:
@@ -98,6 +144,8 @@ class InMemoryStore:
         self._messages: dict[tuple[str, str], list[LoggedMessage]] = {}
         self._inbound: set[tuple[str, str, str]] = set()
         self._approvals: dict[str, str] = {}
+        self._suggestions: dict[str, str] = {}
+        self._gaps: list[KnowledgeGap] = []
         self._lock = threading.Lock()
 
     def load(self, channel: str, key: str) -> ConversationState | None:
@@ -129,6 +177,23 @@ class InMemoryStore:
         raw = self._approvals.get(approval_id)
         return Approval.model_validate_json(raw) if raw else None
 
+    def save_suggestion(self, suggestion: Suggestion) -> None:
+        self._suggestions[suggestion.id] = suggestion.model_dump_json()
+
+    def get_suggestion(self, suggestion_id: str) -> Suggestion | None:
+        raw = self._suggestions.get(suggestion_id)
+        return Suggestion.model_validate_json(raw) if raw else None
+
+    def list_suggestions(self, channel: str, key: str) -> list[Suggestion]:
+        items = [Suggestion.model_validate_json(raw) for raw in self._suggestions.values()]
+        return [s for s in items if (s.channel, s.key) == (channel, key)]
+
+    def add_gap(self, gap: KnowledgeGap) -> None:
+        self._gaps.append(gap)
+
+    def list_gaps(self, since: datetime | None = None) -> list[KnowledgeGap]:
+        return [g for g in self._gaps if since is None or g.at >= since]
+
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS conversations (
@@ -149,6 +214,15 @@ CREATE TABLE IF NOT EXISTS inbound_ids (
 CREATE TABLE IF NOT EXISTS approvals (
     id TEXT PRIMARY KEY, channel TEXT NOT NULL, key TEXT NOT NULL,
     status TEXT NOT NULL, created_at TEXT NOT NULL, data TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS suggestions (
+    id TEXT PRIMARY KEY, seq INTEGER, channel TEXT NOT NULL, key TEXT NOT NULL,
+    status TEXT NOT NULL, created_at TEXT NOT NULL, data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS suggestions_conversation ON suggestions (channel, key, created_at);
+CREATE TABLE IF NOT EXISTS knowledge_gaps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, channel TEXT NOT NULL, key TEXT NOT NULL,
+    question TEXT NOT NULL, query TEXT NOT NULL, at TEXT NOT NULL
 );
 """
 
@@ -222,6 +296,42 @@ class SqliteStore:
         with self._lock:
             row = self._db.execute("SELECT data FROM approvals WHERE id = ?", (approval_id,)).fetchone()
         return Approval.model_validate_json(row[0]) if row else None
+
+
+    def save_suggestion(self, suggestion: Suggestion) -> None:
+        with self._lock:
+            self._db.execute(
+                "INSERT INTO suggestions (id, seq, channel, key, status, created_at, data) "
+                "VALUES (?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM suggestions), ?, ?, ?, ?, ?) "
+                "ON CONFLICT (id) DO UPDATE SET status = excluded.status, data = excluded.data",
+                (suggestion.id, suggestion.channel, suggestion.key, suggestion.status,
+                 suggestion.created_at.isoformat(), suggestion.model_dump_json()))
+
+    def get_suggestion(self, suggestion_id: str) -> Suggestion | None:
+        with self._lock:
+            row = self._db.execute("SELECT data FROM suggestions WHERE id = ?", (suggestion_id,)).fetchone()
+        return Suggestion.model_validate_json(row[0]) if row else None
+
+    def list_suggestions(self, channel: str, key: str) -> list[Suggestion]:
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT data FROM suggestions WHERE channel = ? AND key = ? ORDER BY seq", (channel, key)).fetchall()
+        return [Suggestion.model_validate_json(row[0]) for row in rows]
+
+
+    def add_gap(self, gap: KnowledgeGap) -> None:
+        with self._lock:
+            self._db.execute(
+                "INSERT INTO knowledge_gaps (channel, key, question, query, at) VALUES (?, ?, ?, ?, ?)",
+                (gap.channel, gap.key, gap.question, gap.query, gap.at.isoformat()))
+
+    def list_gaps(self, since: datetime | None = None) -> list[KnowledgeGap]:
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT channel, key, question, query, at FROM knowledge_gaps ORDER BY id").fetchall()
+        gaps = [KnowledgeGap(channel=r[0], key=r[1], question=r[2], query=r[3], at=datetime.fromisoformat(r[4]))
+                for r in rows]
+        return [g for g in gaps if since is None or g.at >= since]
 
 
 def _json_default(value: object) -> str:
