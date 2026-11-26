@@ -1,0 +1,663 @@
+{
+  "topic": "materiale",
+  "entries": [
+    {
+      "id": "materiale-disponibile",
+      "question": "Ce materiale aveți?",
+      "answer": "La stickere: Standard (vinil de 100 de microni), Premium (160 de microni), transparente, holografice, gold, chrome, embosate și sticker sheet. La etichete, pe planșe sau role: premium, transparente, holografice, gold, chrome și embosate.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, ghidurile de materiale din colecțiile Stickere și Etichete și meniul site-ului",
+      "status": "verified",
+      "anchors": [
+        "material",
+        "tip",
+        "varianta",
+        "optiune"
+      ],
+      "variants": [
+        "ce tipuri de stickere aveti",
+        "ce materiale aveti pentru etichete",
+        "pe ce materiale printati",
+        "ce variante de materiale exista",
+        "ce optiuni de material am",
+        "din ce sunt facute"
+      ],
+      "keywords": [
+        "materiale",
+        "tipuri",
+        "vinil",
+        "folie",
+        "variante"
+      ],
+      "source_refs": [
+        "shopify:collection stickere descriptionHtml",
+        "shopify:collection etichete descriptionHtml",
+        "site:/ meniul principal"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "diferenta-sticker-eticheta",
+      "question": "Care este diferența între stickere și etichete?",
+      "answer": "Stickerele vin tăiate individual și sunt de regulă mai rezistente. Etichetele vin tăiate la planșe sau, la cerere, pe role, pentru aplicare rapidă în volum.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, FAQ-ul de pe paginile de produs și secțiunea „Sticker sau etichetă?”",
+      "status": "verified",
+      "anchors": [
+        "diferenta"
+      ],
+      "variants": [
+        "ce diferenta e intre sticker si eticheta",
+        "sticker sau eticheta",
+        "care e diferenta dintre stickere si etichete",
+        "ce sa aleg sticker sau eticheta"
+      ],
+      "keywords": [
+        "diferenta",
+        "sticker",
+        "eticheta",
+        "planse"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "repo:extensions/calculator/locales/ro.json calculator.faq_stickers_vs_labels_answer",
+        "shopify:collection etichete descriptionHtml"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "diferenta-standard-premium",
+      "question": "Care este diferența între Sticker Standard și Sticker Premium?",
+      "answer": "Sticker Standard are 100 de microni și cel mai bun raport preț-calitate. Sticker Premium are 160 de microni: este mai gros și mai rezistent, potrivit pentru mașină, exterior și produse manevrate des.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium"
+      ],
+      "source": "etichetecreative.ro, descrierile produselor Sticker Standard și Sticker Premium și ghidul de materiale din colecția Stickere",
+      "status": "verified",
+      "anchors": [
+        "standard",
+        "premium",
+        "grosime"
+      ],
+      "variants": [
+        "ce diferenta e intre standard si premium",
+        "cat de gros este stickerul",
+        "ce grosime au stickerele",
+        "care e mai rezistent standard sau premium",
+        "cati microni are"
+      ],
+      "keywords": [
+        "standard",
+        "premium",
+        "microni",
+        "grosime",
+        "gros"
+      ],
+      "source_refs": [
+        "shopify:product sticker-standard descriptionHtml",
+        "shopify:product sticker descriptionHtml",
+        "shopify:collection stickere descriptionHtml"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "material-transparent",
+      "question": "Aveți și transparente?",
+      "answer": "Da, avem atât stickere, cât și etichete transparente, cu efect „no-label”: se vede designul, nu suportul. Atenție: pe obiecte închise la culoare opacitatea este scăzută.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, descrierile produselor Sticker Transparente și Etichete Transparente",
+      "status": "verified",
+      "anchors": [
+        "transparent"
+      ],
+      "variants": [
+        "aveti si transparente",
+        "faceti etichete transparente",
+        "stickere cu fundal transparent",
+        "etichete transparente pentru sticle",
+        "vreau sa se vada doar logo-ul fara fundal"
+      ],
+      "keywords": [
+        "transparent",
+        "transparente",
+        "no-label",
+        "sticla"
+      ],
+      "source_refs": [
+        "shopify:product sticker-transparente descriptionHtml",
+        "shopify:product etichete-transparente descriptionHtml",
+        "shopify:collection etichete descriptionHtml"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "print-alb-transparent",
+      "question": "Se printează și alb pe materialul transparent?",
+      "answer": "Da. Pe materialul transparent printăm la rezoluție înaltă, cu strat de alb pentru contrast și vizibilitate, acolo unde este nevoie.",
+      "applies_to": [
+        "Sticker Transparente",
+        "Etichete Transparente"
+      ],
+      "source": "etichetecreative.ro, specificațiile produselor Sticker Transparente și Etichete Transparente",
+      "status": "verified",
+      "anchors": [
+        "alb"
+      ],
+      "variants": [
+        "printati alb pe transparent",
+        "se vede albul pe transparent",
+        "culorile ies sterse pe transparent",
+        "aveti print cu alb"
+      ],
+      "keywords": [
+        "alb",
+        "contrast",
+        "transparent",
+        "opacitate"
+      ],
+      "source_refs": [
+        "site:/products/sticker-transparente secțiunea „Specificații tehnice”",
+        "shopify:product etichete-transparente descriptionHtml"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "material-holografic",
+      "question": "Aveți stickere sau etichete holografice?",
+      "answer": "Da. Materialul holografic are efect curcubeu, care se schimbă în funcție de lumină și unghi. Zonele albe din fișier devin holografice, iar culorile deschise sau care nu sunt complet opace tind și ele să devină holografice.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, descrierile produselor holografice; nota afișată în calculator pentru materialul holografic",
+      "status": "verified",
+      "anchors": [
+        "holografic"
+      ],
+      "variants": [
+        "aveti holografice",
+        "stickere holo",
+        "etichete cu efect curcubeu",
+        "cum arata holograficul",
+        "ce parte din design iese holografica"
+      ],
+      "keywords": [
+        "holografic",
+        "holo",
+        "curcubeu"
+      ],
+      "source_refs": [
+        "shopify:product stickere-holografice descriptionHtml",
+        "shopify:product etichete-holografice descriptionHtml",
+        "repo:extensions/calculator/locales/ro.json calculator.finish_note_holo"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "material-gold-chrome",
+      "question": "Aveți stickere sau etichete aurii ori argintii?",
+      "answer": "Da. Avem Gold, cu finisaj auriu metalic, și Chrome, cu finisaj argintiu tip oglindă, atât la stickere, cât și la etichete. Zonele albe din fișier devin aurii, respectiv cromate, iar culorile deschise sau care nu sunt complet opace tind și ele să preia efectul.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, descrierile produselor Gold și Chrome; notele afișate în calculator pentru aceste materiale",
+      "status": "verified",
+      "anchors": [
+        "gold",
+        "chrome"
+      ],
+      "variants": [
+        "aveti etichete aurii",
+        "stickere gold",
+        "etichete argintii",
+        "stickere chrome",
+        "etichete metalizate",
+        "efect de oglinda",
+        "folie aurie"
+      ],
+      "keywords": [
+        "gold",
+        "auriu",
+        "chrome",
+        "argintiu",
+        "metalic",
+        "oglinda"
+      ],
+      "source_refs": [
+        "shopify:product stickere-gold descriptionHtml",
+        "shopify:product stickere-chrome descriptionHtml",
+        "repo:extensions/calculator/locales/ro.json calculator.finish_note_gold",
+        "repo:extensions/calculator/locales/ro.json calculator.finish_note_chrome"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "material-embosat",
+      "question": "Ce sunt stickerele și etichetele embosate?",
+      "answer": "Au elemente ridicate în relief, care se simt la atingere. Sunt disponibile cu finisaj mat și relief lucios sau ton pe ton. Embosarea se face pe un layer sau pe un spot color din fișier. Dacă materialul ales nu permite embosarea, comanda trece automat pe materialul Premium și vă anunțăm.",
+      "applies_to": [
+        "Sticker Embossat",
+        "Etichete Embossed"
+      ],
+      "source": "etichetecreative.ro, descrierile produselor Etichete Embossed și Sticker Embossat; politica de retur, secțiunea 4",
+      "status": "verified",
+      "anchors": [
+        "embosat"
+      ],
+      "variants": [
+        "aveti etichete in relief",
+        "stickere embosate",
+        "etichete 3d",
+        "cum pregatesc fisierul pentru embosare",
+        "etichete cu relief"
+      ],
+      "keywords": [
+        "embosat",
+        "embossed",
+        "relief",
+        "3d",
+        "spot color"
+      ],
+      "source_refs": [
+        "shopify:product etichete-embossed descriptionHtml",
+        "shopify:product sticker-embossat descriptionHtml",
+        "shopify:shop.shopPolicies REFUND_POLICY §4"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "finisaj",
+      "question": "Sunt mate sau lucioase? Sunt laminate?",
+      "answer": "Finisajul este cu lac UV mat, fără laminare.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "lista de afirmații aprobate de owner din rules.json („lac UV mat”, „fără laminare”)",
+      "status": "verified",
+      "anchors": [
+        "finisaj",
+        "laminare",
+        "mat",
+        "lucios"
+      ],
+      "variants": [
+        "sunt mate sau lucioase",
+        "sunt laminate",
+        "ce finisaj au",
+        "au folie de protectie",
+        "sunt lacuite",
+        "aveti si lucios"
+      ],
+      "keywords": [
+        "finisaj",
+        "mat",
+        "lucios",
+        "laminare",
+        "lac"
+      ],
+      "source_refs": [
+        "config:ec-quote/config/rules.json approved_material_claims"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "Site-ul vorbește la Gold, Chrome și Holografic despre „strat de lac pentru strălucire”, iar la embosate despre „relief lucios”. Vezi contradicția lac-mat-vs-stralucire."
+    },
+    {
+      "id": "adeziv-tipuri",
+      "question": "Ce tipuri de adeziv aveți?",
+      "answer": "În calculator puteți alege între adeziv Standard, inclus în preț, și adeziv Foarte puternic, cu un cost suplimentar calculat automat.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "calculatorul de pe site: pasul „Alege adezivul” (Standard, inclus, sau Foarte puternic)",
+      "status": "verified",
+      "anchors": [
+        "adeziv"
+      ],
+      "variants": [
+        "ce adeziv au",
+        "aveti adeziv mai puternic",
+        "cat de bine se lipesc",
+        "ce lipici folositi",
+        "aveti adeziv permanent"
+      ],
+      "keywords": [
+        "adeziv",
+        "lipici",
+        "puternic",
+        "aderenta"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/locales/ro.json calculator.choose_adhesive / adhesive_standard / adhesive_strong",
+        "shopify:shop.metafield calculator.settings adhesive",
+        "shopify:product.metafield calculator.config adhesiveEnabled"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "adhesive.strongPercent"
+      ],
+      "note_for_staff": "Procentul pentru adezivul Foarte puternic vine din calculator-config; nu se spune din memorie."
+    },
+    {
+      "id": "role-sau-planse",
+      "question": "Etichetele vin pe role?",
+      "answer": "Etichetele se livrează pe planșe sau, la cerere, pe role, cu lățime între 40 și 50 cm. Stickerele vin tăiate individual.",
+      "applies_to": [
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "etichetecreative.ro, FAQ-ul de pe paginile de produs, specificațiile etichetelor și descrierea colecției Etichete",
+      "status": "verified",
+      "anchors": [
+        "rola",
+        "plansa",
+        "coala"
+      ],
+      "variants": [
+        "le faceti pe rola",
+        "etichete pe role",
+        "vin pe coala sau pe rola",
+        "cum sunt livrate etichetele",
+        "vin taiate bucata cu bucata"
+      ],
+      "keywords": [
+        "rola",
+        "role",
+        "planse",
+        "coala",
+        "format"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "shopify:collection etichete descriptionHtml",
+        "site:/products/etichete-premium secțiunea „Specificații tehnice”"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "Lungimea planșei diferă între surse (100/130 cm în FAQ, 120 cm în descrieri). Vezi contradicția format-role."
+    },
+    {
+      "id": "sticker-sheet",
+      "question": "Faceți mai multe stickere pe aceeași coală?",
+      "answer": "Da, avem Sticker Sheet: o coală cu mai multe stickere, fiecare tăiat separat. Alegeți formatul colii (A6, A5, A4 sau dimensiunea dorită) și încărcați fișierul cu toate stickerele așezate pe coală.",
+      "applies_to": [
+        "Sticker Sheet"
+      ],
+      "source": "etichetecreative.ro, descrierea produsului Sticker Sheet",
+      "status": "verified",
+      "anchors": [
+        "sheet",
+        "coala"
+      ],
+      "variants": [
+        "aveti sticker sheet",
+        "mai multe stickere pe o coala",
+        "coala a4 cu stickere",
+        "planse cu stickere diferite"
+      ],
+      "keywords": [
+        "sticker sheet",
+        "coala",
+        "a4",
+        "a5",
+        "a6"
+      ],
+      "source_refs": [
+        "shopify:product sticker-sheet descriptionHtml"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "alte-produse",
+      "question": "Ce alte produse faceți?",
+      "answer": "Pe lângă stickere și etichete, facem magneți personalizați, cărți de vizită, flyere, bannere și mesh publicitar, etichete pentru service-uri auto și kituri care combină mai multe produse.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, meniul site-ului și lista de produse active din Shopify",
+      "status": "verified",
+      "anchors": [
+        "produs",
+        "magnet",
+        "banner",
+        "flyer",
+        "vizita",
+        "kit",
+        "mesh"
+      ],
+      "variants": [
+        "ce produse aveti",
+        "faceti si carti de vizita",
+        "faceti flyere",
+        "faceti bannere",
+        "faceti magneti",
+        "aveti etichete pentru service auto",
+        "ce mai printati"
+      ],
+      "keywords": [
+        "produse",
+        "magneti",
+        "carti de vizita",
+        "flyere",
+        "bannere",
+        "mesh",
+        "kituri",
+        "service auto"
+      ],
+      "source_refs": [
+        "shopify:products status:active (titluri)",
+        "site:/ meniul principal"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "finisaj-lucios",
+      "question": "Se pot face și cu finisaj lucios?",
+      "answer": "",
+      "applies_to": [],
+      "source": "rules.json aprobă doar „lac UV mat”; site-ul pomenește „strat de lac pentru strălucire” la Gold, Chrome și Holografic.",
+      "status": "needs_owner",
+      "anchors": [
+        "lucios"
+      ],
+      "variants": [
+        "vreau lucioase",
+        "aveti lac lucios",
+        "se pot face glossy",
+        "le vreau stralucitoare"
+      ],
+      "keywords": [
+        "lucios",
+        "glossy",
+        "stralucitor"
+      ],
+      "source_refs": [
+        "config:ec-quote/config/rules.json approved_material_claims",
+        "shopify:product etichete-gold descriptionHtml"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Putem face stickere și etichete cu finisaj lucios (lac lucios) la cerere, sau doar mat? (doar mat / și lucios, la cerere)"
+    },
+    {
+      "id": "adeziv-suprafete",
+      "question": "Pe ce suprafețe se lipesc?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Site-ul listează utilizări (sticlă, ambalaje, laptopuri), dar nu spune ce adeziv se potrivește pe fiecare suprafață.",
+      "status": "needs_owner",
+      "anchors": [
+        "suprafata",
+        "lipire"
+      ],
+      "variants": [
+        "se lipesc pe plastic",
+        "tin pe sticla",
+        "se lipesc pe carton",
+        "se lipesc pe haine",
+        "tin pe suprafete rugoase",
+        "pe ce se pot lipi",
+        "se lipesc pe lemn"
+      ],
+      "keywords": [
+        "suprafata",
+        "plastic",
+        "sticla",
+        "carton",
+        "textil",
+        "lemn"
+      ],
+      "source_refs": [
+        "site:/products/<produs> secțiunea „Specificații tehnice” (toate stickerele și etichetele)",
+        "repo:extensions/calculator/locales/ro.json calculator.adhesive_strong"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Pe ce suprafețe ține bine adezivul Standard și când recomandăm Foarte puternic (plastic, sticlă, carton, textile, suprafețe texturate sau prăfuite)? (o propoziție pentru fiecare adeziv)"
+    },
+    {
+      "id": "adeziv-removabil",
+      "question": "Se dezlipesc fără să lase urme?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Calculatorul oferă doar Standard și Foarte puternic; nicio sursă nu vorbește despre dezlipire fără urme.",
+      "status": "needs_owner",
+      "anchors": [
+        "dezlipire",
+        "urme"
+      ],
+      "variants": [
+        "lasa urme cand le dezlipesc",
+        "aveti adeziv removabil",
+        "se pot dezlipi usor",
+        "se pot repozitiona",
+        "raman urme de lipici"
+      ],
+      "keywords": [
+        "dezlipire",
+        "removabil",
+        "urme",
+        "repozitionabil"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/locales/ro.json calculator.choose_adhesive"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Se pot dezlipi stickerele fără să lase urme de adeziv? Avem adeziv removabil? (da / nu / doar la cerere)"
+    },
+    {
+      "id": "material-hartie",
+      "question": "Faceți etichete pe hârtie sau kraft?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Toate materialele de pe site sunt folie sau vinil; owner-ul a exclus din reclame etichetele de carton (2026-11-17), dar nu scrie dacă le producem.",
+      "status": "needs_owner",
+      "anchors": [
+        "hartie"
+      ],
+      "variants": [
+        "aveti etichete din hartie",
+        "etichete kraft",
+        "etichete de carton",
+        "etichete eco",
+        "etichete biodegradabile"
+      ],
+      "keywords": [
+        "hartie",
+        "kraft",
+        "carton",
+        "eco"
+      ],
+      "source_refs": [
+        "shopify:collection etichete descriptionHtml",
+        "repo:/home/user/ec-agency/context/owner-rules.md rândul 2026-11-17 „Pe Google nu facem reclamă la DTF”"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Facem etichete pe hârtie (albă sau kraft), sau doar pe folie și vinil? (doar folie și vinil / și hârtie)"
+    },
+    {
+      "id": "role-detalii",
+      "question": "Ce specificații au rolele?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Site-ul spune doar „pe planșe sau role, lățime 40-50 cm”.",
+      "status": "needs_owner",
+      "anchors": [
+        "rola",
+        "miez",
+        "etichetat"
+      ],
+      "variants": [
+        "ce diametru are rola",
+        "merg la masina de etichetat",
+        "ce cantitate incape pe o rola",
+        "ce miez are rola",
+        "in ce sens se deruleaza rola"
+      ],
+      "keywords": [
+        "rola",
+        "miez",
+        "diametru",
+        "aplicator",
+        "masina de etichetat"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "shopify:collection etichete descriptionHtml"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "La etichetele pe rolă: ce diametru are miezul, câte etichete intră pe o rolă și se pot aplica cu mașina de etichetat? (ex.: miez 76 mm, doar aplicare manuală)"
+    },
+    {
+      "id": "textile-dtf",
+      "question": "Faceți etichete pentru haine sau print DTF?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Există o colecție „Tricouri Personalizate” fără produse; owner-ul a exclus DTF și etichetele pentru haine din reclamele Google (2026-11-17).",
+      "status": "needs_owner",
+      "anchors": [
+        "textil",
+        "dtf"
+      ],
+      "variants": [
+        "faceti etichete pentru haine",
+        "printati tricouri",
+        "aveti dtf",
+        "etichete textile",
+        "faceti transfer termic"
+      ],
+      "keywords": [
+        "haine",
+        "tricouri",
+        "dtf",
+        "textile"
+      ],
+      "source_refs": [
+        "shopify:collection tricouri-personalizate",
+        "repo:/home/user/ec-agency/context/owner-rules.md rândul 2026-11-17 „Pe Google nu facem reclamă la DTF”"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Facem etichete pentru haine, print DTF sau tricouri personalizate? (da / nu)"
+    }
+  ]
+}

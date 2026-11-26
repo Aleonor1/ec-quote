@@ -1,0 +1,253 @@
+{
+  "topic": "termene",
+  "entries": [
+    {
+      "id": "termen-productie-livrare",
+      "question": "Care este timpul de livrare?",
+      "answer": "Termenul de producție și livrare este de 2-10 zile lucrătoare, în funcție de complexitate, material și cantitate. În unele cazuri poate fi mai rapid.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, FAQ-ul de pe paginile de produs („Care este timpul de livrare?”) și politica de retur, secțiunea 5",
+      "status": "verified",
+      "anchors": [
+        "durata",
+        "livrare",
+        "productie"
+      ],
+      "variants": [
+        "cat dureaza livrarea",
+        "in cat timp ajunge comanda",
+        "cand primesc comanda",
+        "cat dureaza productia",
+        "in cate zile sunt gata",
+        "cat de repede le faceti",
+        "care e termenul de executie",
+        "cand ajung stickerele"
+      ],
+      "keywords": [
+        "termen",
+        "durata",
+        "zile lucratoare",
+        "productie",
+        "livrare"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "shopify:shop.shopPolicies REFUND_POLICY §5",
+        "site:/pages/despre-noi („2-10 zile”)",
+        "repo:extensions/calculator/locales/ro.json calculator.delivery_estimate_note"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "Textul vechi din ro.json (faq_delivery_time_answer) spune 2-4 zile producție plus 1-2 zile livrare. Vezi contradicția termen-productie."
+    },
+    {
+      "id": "productie-dupa-aprobare",
+      "question": "Când începe producția?",
+      "answer": "Producția începe după confirmarea graficii. Dacă trimiteți fișierul după comandă, producția începe după ce îl primim.",
+      "applies_to": [],
+      "source": "textele din calculator despre estimarea livrării și despre fișierul trimis după comandă; termenii și condițiile, secțiunea 2 (Bun de Tipar)",
+      "status": "verified",
+      "anchors": [
+        "incepe",
+        "productie"
+      ],
+      "variants": [
+        "cand intra in productie",
+        "de cand se calculeaza termenul",
+        "cand incepeti sa le faceti",
+        "termenul curge de la plata sau de la aprobare"
+      ],
+      "keywords": [
+        "productie",
+        "incepe",
+        "aprobare",
+        "confirmare"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/locales/ro.json calculator.delivery_estimate_after_approval",
+        "repo:extensions/calculator/locales/ro.json calculator.artwork_later_note",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §2"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "urgenta-optiune",
+      "question": "Se poate comanda în regim de urgență?",
+      "answer": "Da. În calculator puteți bifa opțiunea Urgență, pentru livrare prioritară. Este disponibilă până la o anumită cantitate, iar costul suplimentar se calculează automat. Dacă aveți nevoie de comandă până la o dată anume, vă rugăm să ne spuneți înainte de a comanda.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "calculatorul de pe site (opțiunea „Urgență: livrare prioritară”, disponibilă până la o cantitate maximă) și politica de retur, secțiunea 5",
+      "status": "verified",
+      "anchors": [
+        "urgent"
+      ],
+      "variants": [
+        "am nevoie urgent",
+        "se poate mai repede",
+        "aveti regim de urgenta",
+        "le vreau pana vineri",
+        "se pot face pana maine",
+        "cat costa urgenta",
+        "am un eveniment si ma grabesc"
+      ],
+      "keywords": [
+        "urgent",
+        "urgenta",
+        "prioritar",
+        "rapid",
+        "data fixa"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/locales/ro.json calculator.urgency_text / urgency_description / urgency_hint",
+        "shopify:shop.metafield calculator.settings urgency",
+        "shopify:shop.shopPolicies REFUND_POLICY §5"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "urgency.enabled",
+        "urgency.percent",
+        "urgency.flatFeeRON",
+        "urgency.maxQuantity"
+      ],
+      "note_for_staff": "Nu se promite niciun număr de zile pentru urgență: termenul nu este publicat nicăieri (vezi întrebarea urgenta-termen)."
+    },
+    {
+      "id": "termen-carti-flyere",
+      "question": "Cât durează cărțile de vizită și flyerele?",
+      "answer": "La cărți de vizită și flyere alegeți în calculator livrarea standard (8-9 zile lucrătoare), rapidă (4-5 zile lucrătoare) sau urgentă (1-3 zile lucrătoare). Prețul diferă în funcție de varianta aleasă.",
+      "applies_to": [
+        "Carti de Vizita",
+        "Flyere"
+      ],
+      "source": "calculatorul de pe site pentru produsele cu preț fix (etichetele variantelor de livrare)",
+      "status": "verified",
+      "anchors": [
+        "vizita",
+        "flyer"
+      ],
+      "variants": [
+        "in cat timp sunt gata cartile de vizita",
+        "cat dureaza flyerele",
+        "termen carti de vizita",
+        "flyere urgent"
+      ],
+      "keywords": [
+        "carti de vizita",
+        "flyere",
+        "termen",
+        "livrare rapida"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/assets/calculator.js:53-57 DELIVERY_LABELS",
+        "shopify:shop.metafield calculator.fixed_price_tables (chei sta / ex / ov)"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "status-comanda",
+      "question": "Cum aflu în ce stadiu este comanda?",
+      "answer": "Puteți verifica stadiul pe pagina de urmărire a comenzii de pe site sau ne puteți scrie numărul comenzii.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, pagina TrackingComanda și formularul de contact (subiectul „Status comandă”)",
+      "status": "verified",
+      "anchors": [
+        "stadiu",
+        "tracking",
+        "awb"
+      ],
+      "variants": [
+        "unde e comanda mea",
+        "aveti awb",
+        "cum urmaresc coletul",
+        "a plecat comanda",
+        "in ce stadiu e comanda",
+        "nu am primit comanda inca"
+      ],
+      "keywords": [
+        "status",
+        "stadiu",
+        "tracking",
+        "awb",
+        "urmarire"
+      ],
+      "source_refs": [
+        "shopify:page trackingcomanda (publicată)",
+        "site:/pages/contact formular „Despre ce e vorba?”",
+        "site:/pages/despre-noi („Tracking complet”)"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "urgenta-termen",
+      "question": "În cât timp este gata o comandă urgentă?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Calculatorul spune doar „livrare prioritară”; specificația estimatorului de livrare are o valoare implicită de 1 zi, dar nu este publicată pe site.",
+      "status": "needs_owner",
+      "anchors": [
+        "urgent"
+      ],
+      "variants": [
+        "in cate zile e gata la urgenta",
+        "daca platesc urgenta cand ajunge",
+        "urgenta inseamna maine",
+        "cat de repede e gata comanda urgenta"
+      ],
+      "keywords": [
+        "urgenta",
+        "zile",
+        "termen urgent",
+        "maine"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/locales/ro.json calculator.urgency_description",
+        "repo:docs/spec-delivery-date-estimator.md",
+        "repo:ec-quote/docs/plan.md punctul 6"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "În câte zile lucrătoare livrăm o comandă de stickere sau etichete cu opțiunea Urgență și care este textul exact de spus clientului? (ex.: expediere în 1-2 zile lucrătoare de la aprobarea graficii)"
+    },
+    {
+      "id": "durata-transport",
+      "question": "Cât durează transportul după expediere?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Site-ul dă doar termenul total (2-10 zile lucrătoare); textul vechi din ro.json spune 1-2 zile de livrare.",
+      "status": "needs_owner",
+      "anchors": [
+        "expediere"
+      ],
+      "variants": [
+        "in cat timp ajunge coletul dupa ce il trimiteti",
+        "cat dureaza curierul dupa expediere",
+        "livrare in 24 de ore",
+        "ajunge a doua zi dupa expediere"
+      ],
+      "keywords": [
+        "transport",
+        "curier",
+        "expediere",
+        "24h"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "repo:extensions/calculator/locales/ro.json calculator.faq_delivery_time_answer"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Cât durează curierul după ce comanda pleacă din atelier? (ex.: 1-2 zile lucrătoare)"
+    }
+  ]
+}

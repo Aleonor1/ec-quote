@@ -1,0 +1,274 @@
+{
+  "topic": "plata",
+  "entries": [
+    {
+      "id": "metode-plata",
+      "question": "Cum pot plăti?",
+      "answer": "Puteți plăti online cu cardul (Visa, Mastercard, Maestro, American Express), cu Apple Pay sau Google Pay, ori prin ordin de plată, pe bază de factură proformă.",
+      "applies_to": [],
+      "source": "subsolul site-ului („Acceptăm”), setările de plată din Shopify și metodele folosite la ultimele 100 de comenzi",
+      "status": "verified",
+      "anchors": [
+        "plata",
+        "card"
+      ],
+      "variants": [
+        "pot plati cu cardul",
+        "ce metode de plata aveti",
+        "se poate plati online",
+        "acceptati apple pay",
+        "cum se face plata",
+        "platesc cu cardul pe site"
+      ],
+      "keywords": [
+        "plata",
+        "card",
+        "online",
+        "apple pay",
+        "google pay",
+        "metode"
+      ],
+      "source_refs": [
+        "site:/ (subsol și bannerele de sus, pe toate paginile)",
+        "shopify:shop.paymentSettings.supportedDigitalWallets",
+        "shopify:orders ultimele 100 (paymentGatewayNames: shopify_payments, „Plata prin OP (Pe baza de Proforma)”, shopify_store_credit)"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "plata-op",
+      "question": "Pot plăti prin transfer bancar?",
+      "answer": "Da, se poate plăti prin ordin de plată, pe bază de factură proformă.",
+      "applies_to": [],
+      "source": "metoda de plată „Plata prin OP (Pe baza de Proforma)”, folosită la comenzile recente din Shopify",
+      "status": "verified",
+      "anchors": [
+        "transfer",
+        "proforma"
+      ],
+      "variants": [
+        "pot plati cu op",
+        "imi trimiteti o proforma",
+        "platesc prin banca",
+        "se poate cu ordin de plata",
+        "vreau factura proforma",
+        "plata prin virament"
+      ],
+      "keywords": [
+        "transfer bancar",
+        "op",
+        "ordin de plata",
+        "proforma",
+        "virament"
+      ],
+      "source_refs": [
+        "shopify:orders ultimele 100 (paymentGatewayNames: shopify_payments, „Plata prin OP (Pe baza de Proforma)”, shopify_store_credit)"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "factura",
+      "question": "Faceți factură pe firmă?",
+      "answer": "Da, emitem factură pentru fiecare comandă. Suntem plătitori de TVA, iar prețurile din calculator includ TVA.",
+      "applies_to": [],
+      "source": "termenii și condițiile, secțiunea 3 („Furnizorul este plătitor de TVA”); politica de confidențialitate, secțiunea 4 (emiterea facturilor); CRM-ul intern facturează prin Oblio",
+      "status": "verified",
+      "anchors": [
+        "factura",
+        "firma"
+      ],
+      "variants": [
+        "faceti factura pe firma",
+        "se poate factura pe srl",
+        "primesc factura",
+        "dati factura cu tva",
+        "pot comanda pe persoana juridica",
+        "am nevoie de factura fiscala"
+      ],
+      "keywords": [
+        "factura",
+        "firma",
+        "srl",
+        "pfa",
+        "persoana juridica",
+        "tva"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §3",
+        "shopify:shop.shopPolicies PRIVACY_POLICY §4",
+        "repo:/home/user/crm-etichete-creative/PRODUCT.md",
+        "site:/ (subsol și bannerele de sus, pe toate paginile)"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "pret-include-tva",
+      "question": "Prețul include TVA?",
+      "answer": "Da. Prețul din calculator include TVA și nu există costuri ascunse.",
+      "applies_to": [],
+      "source": "subsolul site-ului („prețul din calculator include TVA”) și setarea Shopify taxesIncluded",
+      "status": "verified",
+      "anchors": [
+        "tva"
+      ],
+      "variants": [
+        "pretul e cu tva",
+        "pretul afisat e final",
+        "se adauga tva la pret",
+        "pretul e fara tva",
+        "mai sunt alte costuri"
+      ],
+      "keywords": [
+        "tva",
+        "pret final",
+        "costuri ascunse"
+      ],
+      "source_refs": [
+        "site:/ (subsol și bannerele de sus, pe toate paginile)",
+        "shopify:shop.taxesIncluded = true",
+        "repo:extensions/calculator/locales/ro.json calculator.vat_inclusive"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "avans",
+      "question": "Se cere avans?",
+      "answer": "Pentru anumite comenzi putem solicita un avans.",
+      "applies_to": [],
+      "source": "termenii și condițiile, secțiunea 3 („Se poate solicita avans pentru anumite comenzi”)",
+      "status": "verified",
+      "anchors": [
+        "avans"
+      ],
+      "variants": [
+        "trebuie sa platesc avans",
+        "platesc tot in avans",
+        "cat e avansul"
+      ],
+      "keywords": [
+        "avans",
+        "plata in avans"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §3"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "plata-ramburs",
+      "question": "Se poate plăti ramburs, la livrare?",
+      "answer": "",
+      "applies_to": [],
+      "source": "La ultimele 100 de comenzi apar doar card, OP pe bază de proformă și credit magazin; nicio sursă nu spune dacă rambursul este acceptat sau refuzat.",
+      "status": "needs_owner",
+      "anchors": [
+        "ramburs"
+      ],
+      "variants": [
+        "pot plati la livrare",
+        "platesc la curier",
+        "aveti plata ramburs",
+        "plata cash la primire",
+        "pot plati cand ajunge coletul"
+      ],
+      "keywords": [
+        "ramburs",
+        "la livrare",
+        "cash",
+        "numerar"
+      ],
+      "source_refs": [
+        "shopify:orders ultimele 100 (paymentGatewayNames: shopify_payments, „Plata prin OP (Pe baza de Proforma)”, shopify_store_credit)",
+        "site:/ (subsol și bannerele de sus, pe toate paginile)"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Acceptăm plata ramburs, la curier? (da / nu)"
+    },
+    {
+      "id": "date-factura-firma",
+      "question": "Ce date trebuie pentru factura pe firmă?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Nicio sursă citită nu descrie cum se introduc datele firmei.",
+      "status": "needs_owner",
+      "anchors": [
+        "cui",
+        "date"
+      ],
+      "variants": [
+        "unde trec cui-ul",
+        "ce date va trebuie pentru factura",
+        "va trimit datele firmei",
+        "unde pun codul fiscal"
+      ],
+      "keywords": [
+        "cui",
+        "cod fiscal",
+        "date firma",
+        "date facturare"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §3"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Ce date cerem pentru factura pe firmă și unde le trece clientul: la checkout sau ni le trimite pe WhatsApp? (ex.: CUI și denumire, în câmpul Companie de la checkout)"
+    },
+    {
+      "id": "plata-la-termen",
+      "question": "Se poate plăti la termen?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Nicio sursă citită nu vorbește despre plata la termen.",
+      "status": "needs_owner",
+      "anchors": [
+        "scadenta"
+      ],
+      "variants": [
+        "putem plati la 30 de zile",
+        "aveti plata la termen",
+        "platim dupa ce primim marfa",
+        "lucrati cu contract si termen de plata"
+      ],
+      "keywords": [
+        "plata la termen",
+        "scadenta",
+        "30 de zile",
+        "contract"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §3"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Acceptăm plata la termen pentru firme (după livrare, la 15 sau 30 de zile)? (nu / da, în ce condiții)"
+    },
+    {
+      "id": "op-incepe-productia",
+      "question": "Când începe producția la plata prin OP?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Nicio sursă citită nu spune când pornește producția la plata prin OP.",
+      "status": "needs_owner",
+      "anchors": [
+        "transfer",
+        "proforma"
+      ],
+      "variants": [
+        "am facut transferul cand incepeti",
+        "va trimit dovada platii",
+        "astept sa intre banii",
+        "am platit proforma"
+      ],
+      "keywords": [
+        "dovada platii",
+        "op",
+        "incasare",
+        "confirmare plata"
+      ],
+      "source_refs": [
+        "shopify:orders ultimele 100 (paymentGatewayNames: shopify_payments, „Plata prin OP (Pe baza de Proforma)”, shopify_store_credit)"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "La plata prin OP, producția începe la primirea dovezii de plată sau după ce intră banii în cont? (una dintre cele două)"
+    }
+  ]
+}

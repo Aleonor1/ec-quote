@@ -1,0 +1,66 @@
+{
+  "topic": "mostre",
+  "entries": [
+    {
+      "id": "mostre-gratuite",
+      "question": "Trimiteți mostre?",
+      "answer": "",
+      "applies_to": [],
+      "source": "În Shopify există produse nelistate „Mostre ...” și un profil de livrare „Mostre (livrare gratuită)”; owner-ul a lansat pe 2026-11-17 o ofertă de mostre gratuite tratată manual pe WhatsApp. Condițiile nu sunt scrise nicăieri.",
+      "status": "needs_owner",
+      "anchors": [
+        "mostra"
+      ],
+      "variants": [
+        "imi puteti trimite mostre",
+        "aveti mostre gratuite",
+        "vreau sa vad materialele inainte",
+        "aveti un esantion",
+        "pot primi cateva mostre",
+        "cat costa mostrele"
+      ],
+      "keywords": [
+        "mostre",
+        "esantion",
+        "sample",
+        "gratuit"
+      ],
+      "source_refs": [
+        "shopify:products title:Mostre* (status UNLISTED)",
+        "shopify:deliveryProfiles „Mostre (livrare gratuită)”",
+        "repo:/home/user/ec-agency/context/owner-rules.md rândurile 2026-11-17 despre mostre gratuite"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Trimitem mostre gratuite? Ce conține setul, cine plătește transportul și cum le cere clientul? (ex.: da, set cu 5 materiale, gratuit, cu transport inclus)"
+    },
+    {
+      "id": "mostra-cu-designul-meu",
+      "question": "Pot primi o mostră tipărită cu designul meu?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Site-ul oferă doar simulare grafică gratuită, nu o mostră fizică tipărită cu designul clientului.",
+      "status": "needs_owner",
+      "anchors": [
+        "mostra",
+        "proba"
+      ],
+      "variants": [
+        "faceti o proba cu logo-ul meu",
+        "vreau o bucata de test inainte",
+        "pot vedea un exemplar inainte de comanda mare",
+        "tipariti o mostra cu designul meu"
+      ],
+      "keywords": [
+        "proba",
+        "test",
+        "exemplar",
+        "mostra personalizata"
+      ],
+      "source_refs": [
+        "site:/ (subsol și bannerele de sus, pe toate paginile)"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Facem o mostră tipărită cu designul clientului înainte de comanda mare? Dacă da, cât costă și în cât timp? (nu / da, condițiile)"
+    }
+  ]
+}

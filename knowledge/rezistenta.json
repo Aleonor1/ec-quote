@@ -1,0 +1,457 @@
+{
+  "topic": "rezistenta",
+  "entries": [
+    {
+      "id": "rezistenta-apa",
+      "question": "Sunt rezistente la apă?",
+      "answer": "Da. Atât etichetele, cât și stickerele sunt printate UV și sunt rezistente la apă, la razele UV și la zgârieturi.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "etichetecreative.ro, FAQ-ul de pe paginile de produs („Rezistă la apă?”) și specificațiile fiecărui produs; lista aprobată din rules.json (rezistență la umezeală și ulei)",
+      "status": "verified",
+      "anchors": [
+        "apa"
+      ],
+      "variants": [
+        "rezista la apa",
+        "sunt impermeabile",
+        "se strica daca se uda",
+        "rezista la umezeala",
+        "sunt waterproof",
+        "pot fi spalate cu apa",
+        "rezistent la apa"
+      ],
+      "keywords": [
+        "apa",
+        "umezeala",
+        "impermeabil",
+        "rezistenta"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "site:/products/<produs> secțiunea „Specificații tehnice” (toate stickerele și etichetele)",
+        "repo:extensions/calculator/locales/ro.json calculator.faq_water_resistant_answer",
+        "config:ec-quote/config/rules.json approved_material_claims"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "rezistenta-uv",
+      "question": "Rezistă la soare și la raze UV?",
+      "answer": "Da. Stickerele și etichetele sunt printate UV și sunt rezistente la razele solare, la apă și la zgârieturi.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "etichetecreative.ro, FAQ-ul de pe paginile de produs și descrierea Sticker Premium („Print UV rezistent la raze solare, apă și zgârieturi”)",
+      "status": "verified",
+      "anchors": [
+        "soare"
+      ],
+      "variants": [
+        "rezista la soare",
+        "se decoloreaza la soare",
+        "sunt rezistente la uv",
+        "isi pierd culoarea in timp",
+        "se decoloreaza"
+      ],
+      "keywords": [
+        "soare",
+        "uv",
+        "decolorare",
+        "culoare"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "site:/products/<produs> secțiunea „Specificații tehnice” (toate stickerele și etichetele)",
+        "shopify:product sticker descriptionHtml",
+        "shopify:shop.metafield calculator.settings trustBadges"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "rezistenta-exterior",
+      "question": "Pot fi folosite la exterior?",
+      "answer": "Da. Atât etichetele, cât și stickerele rezistă în mediul exterior, la apă, UV și zgârieturi. Pentru mașină și exterior este potrivit Sticker Premium, de 160 de microni, mai gros și mai rezistent decât cel Standard.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "etichetecreative.ro, FAQ-ul de pe paginile de produs („rezistă în mediul exterior, la apă, UV și zgârieturi”) și ghidul de materiale din colecția Stickere",
+      "status": "verified",
+      "anchors": [
+        "exterior"
+      ],
+      "variants": [
+        "le pot lipi afara",
+        "rezista la ploaie",
+        "merg puse pe masina",
+        "stickere pentru exterior",
+        "rezista la intemperii",
+        "le pot pune pe geam afara",
+        "stickere auto"
+      ],
+      "keywords": [
+        "exterior",
+        "afara",
+        "ploaie",
+        "masina",
+        "auto"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "shopify:collection stickere descriptionHtml",
+        "site:/products/sticker secțiunea „Utilizări” (Auto & exterior)"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "rezistenta-ulei",
+      "question": "Rezistă la ulei?",
+      "answer": "Da, materialul este rezistent la umezeală și ulei.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "lista de afirmații aprobate de owner din rules.json; regula owner-ului din 2026-11-17 („materialul rezistă la umezeală și ulei”); textele de campanie din CRM",
+      "status": "verified",
+      "anchors": [
+        "ulei"
+      ],
+      "variants": [
+        "rezista la ulei",
+        "rezista la grasime",
+        "se sterg daca ajunge ulei pe ele",
+        "etichete pentru sticle de ulei",
+        "rezista la produse uleioase"
+      ],
+      "keywords": [
+        "ulei",
+        "grasime",
+        "cosmetice"
+      ],
+      "source_refs": [
+        "config:ec-quote/config/rules.json approved_material_claims",
+        "repo:/home/user/ec-agency/context/owner-rules.md rândul 2026-11-17 „Atelierul face orice fel de etichete”",
+        "repo:/home/user/crm-etichete-creative/packages/db/src/migrations/shared.ts:428-431",
+        "shopify:product eticheta-revizie-generala descriptionHtml"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "rezistenta-zgarieturi",
+      "question": "Se zgârie ușor?",
+      "answer": "Printul este rezistent la zgârieturi, la apă și la razele UV.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "etichetecreative.ro, FAQ-ul și specificațiile de pe paginile de produs",
+      "status": "verified",
+      "anchors": [
+        "zgarietura"
+      ],
+      "variants": [
+        "rezista la zgarieturi",
+        "se sterge printul",
+        "se ia culoarea la frecare",
+        "se sterge imprimarea"
+      ],
+      "keywords": [
+        "zgarieturi",
+        "uzura",
+        "frecare",
+        "stergere"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "site:/products/<produs> secțiunea „Specificații tehnice” (toate stickerele și etichetele)",
+        "repo:extensions/calculator/locales/ro.json calculator.badge_waterproof"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "rezistenta-magneti",
+      "question": "Cât de rezistenți sunt magneții?",
+      "answer": "Magneții au print UV full color și sunt tăiați pe contur. Sunt rezistenți la apă, la razele UV și la zgârieturi, iar printul rezistă la manipulare repetată.",
+      "applies_to": [
+        "Magneti Personalizati"
+      ],
+      "source": "etichetecreative.ro, descrierea și specificațiile produsului Magneți Personalizați",
+      "status": "verified",
+      "anchors": [
+        "magnet"
+      ],
+      "variants": [
+        "magnetii rezista",
+        "se sterge printul de pe magneti",
+        "magneti de frigider rezistenti"
+      ],
+      "keywords": [
+        "magnet",
+        "magneti",
+        "rezistenta"
+      ],
+      "source_refs": [
+        "shopify:product magneti-personalizati descriptionHtml",
+        "site:/products/magneti-personalizati secțiunea „Specificații tehnice”"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "durata-exterior",
+      "question": "Câți ani rezistă la exterior?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Site-ul spune doar „durabilitate în timp” și „ani buni”, fără o cifră.",
+      "status": "needs_owner",
+      "anchors": [
+        "ani",
+        "garantie"
+      ],
+      "variants": [
+        "cati ani rezista",
+        "cat timp tin afara",
+        "ce durata de viata au",
+        "cat rezista in timp",
+        "ce garantie au",
+        "in cat timp se decoloreaza"
+      ],
+      "keywords": [
+        "ani",
+        "durata de viata",
+        "garantie",
+        "exterior"
+      ],
+      "source_refs": [
+        "site:/pages/despre-noi",
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Câți ani rezistă la exterior, în soare și ploaie, un Sticker Standard și un Sticker Premium, fără să se decoloreze? (ex.: 2 ani, respectiv 4 ani)"
+    },
+    {
+      "id": "masina-spalat-vase",
+      "question": "Rezistă în mașina de spălat vase?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Nicio sursă citită nu vorbește despre mașina de spălat vase.",
+      "status": "needs_owner",
+      "anchors": [
+        "spalatvase"
+      ],
+      "variants": [
+        "se dezlipesc in masina de spalat vase",
+        "pot spala paharele la masina",
+        "rezista la dishwasher",
+        "stickere pentru cani care se spala la masina",
+        "rezista la spalat cu detergent"
+      ],
+      "keywords": [
+        "masina de spalat vase",
+        "dishwasher",
+        "detergent",
+        "spalare"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "config:ec-quote/config/rules.json approved_material_claims"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Rezistă stickerele și etichetele la mașina de spălat vase? Dacă da, pe care material și cu ce adeziv? (da / nu / doar spălare de mână)"
+    },
+    {
+      "id": "frigider-congelator",
+      "question": "Rezistă la frigider sau la congelator?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Nicio sursă citită nu vorbește despre frigider, congelator sau condens.",
+      "status": "needs_owner",
+      "anchors": [
+        "frig"
+      ],
+      "variants": [
+        "le pot pune la congelator",
+        "rezista la frigider",
+        "etichete pentru produse congelate",
+        "se dezlipesc la rece",
+        "rezista la condens",
+        "etichete pentru inghetata",
+        "rezista la temperaturi scazute"
+      ],
+      "keywords": [
+        "frigider",
+        "congelator",
+        "rece",
+        "condens",
+        "inghet"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "config:ec-quote/config/rules.json approved_material_claims"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Rezistă etichetele lipite pe produse ținute la frigider? Dar la congelator, și până la ce temperatură? (ex.: frigider da, congelator da până la -18 grade)"
+    },
+    {
+      "id": "temperatura-ridicata",
+      "question": "Rezistă la temperaturi ridicate?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Nicio sursă citită nu dă o temperatură maximă.",
+      "status": "needs_owner",
+      "anchors": [
+        "caldura"
+      ],
+      "variants": [
+        "rezista la cuptorul cu microunde",
+        "rezista la caldura",
+        "etichete pentru lumanari",
+        "se topesc la soare in masina",
+        "borcane sterilizate la cald",
+        "rezista la temperaturi mari",
+        "se pot spala cu apa calda",
+        "rezista la apa fierbinte"
+      ],
+      "keywords": [
+        "caldura",
+        "microunde",
+        "temperatura",
+        "fierbinte",
+        "lumanari"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "config:ec-quote/config/rules.json approved_material_claims"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Până la ce temperatură rezistă stickerele și etichetele (cuptor cu microunde, borcane umplute la cald, lumânări, motor)? (ex.: până la 80 de grade)"
+    },
+    {
+      "id": "contact-alimentar",
+      "question": "Pot fi lipite direct pe alimente?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Site-ul recomandă etichetele pentru ambalaje de alimente, dar nu spune nimic despre contactul direct sau despre certificate.",
+      "status": "needs_owner",
+      "anchors": [
+        "aliment"
+      ],
+      "variants": [
+        "sunt sigure pentru alimente",
+        "le pot lipi direct pe mancare",
+        "au certificat alimentar",
+        "sunt netoxice",
+        "etichete pentru contact alimentar",
+        "pot fi lipite pe fructe"
+      ],
+      "keywords": [
+        "alimentar",
+        "alimente",
+        "certificat",
+        "netoxic",
+        "siguranta"
+      ],
+      "source_refs": [
+        "shopify:collection etichete descriptionHtml",
+        "shopify:page etichete-produse (nepublicată)"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Putem spune că etichetele sunt sigure pentru contact direct cu alimentele, sau doar pentru ambalaj? Avem vreun certificat? (da cu certificat / doar pe ambalaj)"
+    },
+    {
+      "id": "rezistenta-chimicale",
+      "question": "Rezistă la alcool, dezinfectant sau solvenți?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Nicio sursă citită nu vorbește despre alcool, dezinfectant sau solvenți.",
+      "status": "needs_owner",
+      "anchors": [
+        "chimic"
+      ],
+      "variants": [
+        "rezista la alcool",
+        "rezista la dezinfectant",
+        "rezista la benzina",
+        "se sterg cu acetona",
+        "rezista la substante chimice",
+        "rezista la spirt"
+      ],
+      "keywords": [
+        "alcool",
+        "dezinfectant",
+        "solvent",
+        "benzina",
+        "chimicale"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "config:ec-quote/config/rules.json approved_material_claims"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Rezistă printul la alcool, dezinfectant, benzină sau solvenți? (ex.: alcool da, solvenți nu)"
+    }
+  ]
+}

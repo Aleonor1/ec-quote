@@ -1,0 +1,163 @@
+{
+  "_note": "Contradicții găsite între surse la 2026-11-26. Nu alegem noi: fiecare are o întrebare pentru owner.",
+  "contradictions": [
+    {
+      "id": "afirmatii-material",
+      "topic": "rezistenta",
+      "summary": "Lista aprobată din rules.json permite doar „rezistență la umezeală și ulei”, „lac UV mat” și „fără laminare”. Site-ul afirmă pe fiecare produs „rezistente la apă, UV și zgârieturi” și „rezistă în mediul exterior”, iar la Etichete Embossed și „intemperii”. Verificarea din ec-quote (guard) blochează orice text cu „rezistent” care nu este în lista aprobată.",
+      "sources": [
+        "config:ec-quote/config/rules.json approved_material_claims",
+        "site:/products/sticker-standard#faq",
+        "shopify:product etichete-embossed descriptionHtml"
+      ],
+      "question": "Adăugăm în lista aprobată „rezistente la apă, UV și zgârieturi” și „rezistă la exterior”, exact ca pe site? (da / nu / alt text)"
+    },
+    {
+      "id": "lac-mat-vs-stralucire",
+      "topic": "materiale",
+      "summary": "rules.json spune „lac UV mat”. Site-ul spune la Etichete Gold, Chrome și Holografice „protejate cu strat de lac pentru strălucire”, iar la embosate „finisaj mat și relief lucios”.",
+      "sources": [
+        "config:ec-quote/config/rules.json approved_material_claims",
+        "shopify:product etichete-gold descriptionHtml",
+        "shopify:product etichete-embossed descriptionHtml"
+      ],
+      "question": "Finisajul este mat la toate materialele, inclusiv Gold, Chrome și Holografic? (da / nu, care sunt lucioase)"
+    },
+    {
+      "id": "termen-productie",
+      "topic": "termene",
+      "summary": "Site-ul și politica de retur spun 2-10 zile lucrătoare pentru producție și livrare. Textul vechi din calculator (ro.json, faq_delivery_time_answer) spune 2-4 zile lucrătoare producție plus 1-2 zile livrare.",
+      "sources": [
+        "site:/products/sticker-standard#faq",
+        "shopify:shop.shopPolicies REFUND_POLICY §5",
+        "repo:extensions/calculator/locales/ro.json calculator.faq_delivery_time_answer"
+      ],
+      "question": "Care este termenul de spus clienților: 2-10 zile lucrătoare în total, sau 2-4 zile producție plus 1-2 zile livrare?"
+    },
+    {
+      "id": "telefon-whatsapp",
+      "topic": "contact",
+      "summary": "Site-ul și Shopify dau telefonul și WhatsApp-ul 0792 772 295. Regulile din ec-agency (2026-11-17) dau pentru oferta de mostre WhatsApp +40 755 094 695.",
+      "sources": [
+        "site:/pages/contact",
+        "repo:/home/user/ec-agency/context/owner-rules.md rândul 2026-11-17 „Campania Timișoara trece pe oferta de mostre gratuite”"
+      ],
+      "question": "Ce număr de WhatsApp dăm clienților: 0792 772 295, 0755 094 695 sau amândouă (și pentru ce)?"
+    },
+    {
+      "id": "livrare-europa",
+      "topic": "livrare",
+      "summary": "Pagina „Despre noi” spune „Livrăm în toată Europa” și „27 țări deservite în UE”. În Shopify singura zonă de livrare este România, iar calculatorul afișează „Expediat în toată România!”.",
+      "sources": [
+        "site:/pages/despre-noi",
+        "shopify:deliveryProfiles „General profile” (doar România)",
+        "shopify:shop.metafield calculator.settings translations.shippingBadge"
+      ],
+      "question": "Livrăm în afara României? (nu / da, cum se comandă și cât costă)"
+    },
+    {
+      "id": "dpi-minim",
+      "topic": "fisiere",
+      "summary": "Politica de retur și termenii cer minimum 300 DPI. rules.json din ec-quote consideră fișierul bun de la 150 DPI și slab între 100 și 150, iar Print Studio blochează abia sub 150 DPI.",
+      "sources": [
+        "shopify:shop.shopPolicies REFUND_POLICY §3.1",
+        "config:ec-quote/config/rules.json min_dpi_ok / min_dpi_weak",
+        "repo:features/application-architecture.md:657"
+      ],
+      "question": "Ce prag de rezoluție comunicăm clientului pe WhatsApp: 300 DPI, ca în politică, sau acceptăm fără avertisment de la 150 DPI?"
+    },
+    {
+      "id": "simulare-bt",
+      "topic": "fisiere",
+      "summary": "Site-ul promite „Simulare gratuită la fiecare comandă, înainte de producție”. Termenii spun că producția așteaptă aprobarea doar „dacă clientul solicită simulare grafică”. Politica de retur spune că furnizorul nu verifică fișierele în prealabil și că producția începe pe baza fișierelor primite.",
+      "sources": [
+        "site:/ bannerul de sus",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §2",
+        "shopify:shop.shopPolicies REFUND_POLICY §3.1"
+      ],
+      "question": "Trimitem simulare la fiecare comandă și așteptăm aprobarea, sau doar la cerere? Pe ce canal o trimitem?"
+    },
+    {
+      "id": "format-role",
+      "topic": "materiale",
+      "summary": "FAQ-ul de pe paginile de produs spune planșe sau role cu lățime 40-50 cm și lungime 100 cm / 130 cm. Descrierile produselor spun „Format role/coli: 50 × 120 cm”.",
+      "sources": [
+        "site:/products/etichete-premium#faq",
+        "shopify:product etichete-premium descriptionHtml"
+      ],
+      "question": "Ce format au planșele și rolele de etichete: 50 × 120 cm sau 40-50 cm × 100/130 cm?"
+    },
+    {
+      "id": "formate-fisier",
+      "topic": "fisiere",
+      "summary": "Calculatorul afișează clientului „PNG, JPG, PDF, SVG, AI”. Setările calculatorului acceptă și ZIP și PSD.",
+      "sources": [
+        "repo:extensions/calculator/locales/ro.json calculator.upload_hint",
+        "shopify:shop.metafield calculator.settings fileUpload.acceptedFormats"
+      ],
+      "question": "Spunem clienților că primim și PSD sau ZIP? (da / nu)"
+    },
+    {
+      "id": "cantitate-minima-texte",
+      "topic": "comanda",
+      "summary": "Site-ul afișează comandă minimă de 50 de bucăți, iar setările calculatorului au minQuantity 50. Textele din ro.json spun încă „Cantitate minimă: 25 buc”. Etichetele pentru service auto au minimum 100 de bucăți pe model.",
+      "sources": [
+        "site:/products/sticker-standard secțiunea „Specificații tehnice”",
+        "repo:extensions/calculator/locales/ro.json calculator.min_qty_warning",
+        "shopify:collection service-auto descriptionHtml"
+      ],
+      "question": "Confirmi: minimum 50 de bucăți la stickere și etichete și 100 pe model la service auto? (da / alte valori)"
+    },
+    {
+      "id": "taxa-grafica",
+      "topic": "fisiere",
+      "summary": "Site-ul spune că grafica făcută de noi la cărți de vizită și flyere costă 70 lei. Metafieldul calculator.fixed_price_config are designFee 150.",
+      "sources": [
+        "site:/ secțiunea „Flyere / Cărți de vizită”",
+        "shopify:shop.metafield calculator.fixed_price_config businessCards.designFee"
+      ],
+      "question": "Cât costă grafica făcută de noi la cărți de vizită și flyere: 70 lei sau 150 lei?"
+    },
+    {
+      "id": "adresa",
+      "topic": "contact",
+      "summary": "Sediul din subsolul site-ului și din politici este Str. Eugen Ionesco nr. 67, Cluj-Napoca. Locația magazinului din Shopify este Strada Grigore Alexandrescu 13, Cluj-Napoca. Pagina de contact arată la locație doar „România”.",
+      "sources": [
+        "site:/ subsol",
+        "shopify:locations „Shop location”",
+        "site:/pages/contact"
+      ],
+      "question": "Care este adresa atelierului și o dăm clienților (pentru ridicare sau vizită)? (adresa / nu o comunicăm)"
+    },
+    {
+      "id": "sticker-sheet-rezistenta",
+      "topic": "rezistenta",
+      "summary": "Ghidul din colecția Stickere spune la Sticker Sheet rezistență la „apă și raze UV”. Pagina produsului spune „rezistent la apă, UV și zgârieturi”.",
+      "sources": [
+        "shopify:collection stickere descriptionHtml",
+        "shopify:product sticker-sheet descriptionHtml"
+      ],
+      "question": "Sticker Sheet este rezistent și la zgârieturi, ca Sticker Standard? (da / nu)"
+    },
+    {
+      "id": "email-comenzi",
+      "topic": "contact",
+      "summary": "Pagina de contact dă vanzari@etichetecreative.ro pentru comenzi și oferte. Politica de retur cere anulările și reclamațiile pe hello@etichetecreative.ro sau etichetecreative@gmail.com.",
+      "sources": [
+        "site:/pages/contact",
+        "shopify:shop.shopPolicies REFUND_POLICY §2 și §6"
+      ],
+      "question": "Pe ce adresă de email trimitem clienții pentru anulări și reclamații?"
+    },
+    {
+      "id": "reducere-kit-service",
+      "topic": "comanda",
+      "summary": "Descrierea produsului Kit service auto spune „aproximativ 14% mai puțin decât separat”. Prima pagină a site-ului afișează la același kit „−30% în pachet”.",
+      "sources": [
+        "shopify:product kit-service-auto descriptionHtml",
+        "site:/ secțiunea de kituri"
+      ],
+      "question": "Care este reducerea corectă la Kit service auto: 14% sau 30%?"
+    }
+  ]
+}

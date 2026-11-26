@@ -1,6 +1,7 @@
 {
   "_note": "Vocabular pentru căutare: cuvinte ignorate, expresii și sinonime. Totul fără diacritice, cu litere mici. Cheia unui grup de sinonime este conceptul folosit în `anchors`.",
-  "stopwords": ["a", "aceasta", "acest", "aceste", "acesti", "acolo", "acum", "ai", "aici", "ajunge", "al", "ale", "am", "are", "as", "asa", "asta", "astea", "ati", "au", "avea", "avem", "aveti", "bine", "buc", "bucata", "bucati", "bucatile", "buna", "ca", "care", "cat", "cata", "cate", "cati", "ce", "cea", "cei", "cel", "cele", "ceva", "cm", "comandat", "cu", "cum", "cumva", "da", "daca", "dar", "dati", "dau", "de", "decat", "deci", "despre", "dimineata", "din", "doar", "doresc", "dori", "dumneavoastra", "dupa", "dvs", "e", "ei", "ele", "este", "eu", "eventual", "exista", "fac", "face", "facem", "faceti", "fara", "fi", "fie", "foarte", "frumos", "hello", "iar", "iau", "ii", "il", "imi", "in", "inainte", "insa", "inseamna", "intampla", "intreb", "intrebare", "la", "le", "lei", "lor", "lua", "luat", "lui", "ma", "mai", "mea", "mei", "mele", "merg", "merge", "mersi", "meu", "mi", "mm", "ms", "multumesc", "ne", "niste", "noi", "nu", "numai", "o", "ok", "ori", "pana", "pe", "pentru", "poate", "pot", "primesc", "primi", "prin", "pt", "ptr", "pun", "pune", "puse", "putem", "puteti", "rog", "ron", "s", "sa", "salut", "salutare", "sau", "se", "seara", "si", "spre", "spuneti", "sti", "stiti", "stiu", "stiut", "sunt", "sunteti", "toate", "tot", "trebuie", "tu", "ul", "un", "va", "veni", "vin", "vine", "voi", "vrea", "vreau", "x", "zi", "ziceti", "ziua"],
+  "stopwords": ["a", "personalizat", "personalizata", "personalizate", "personalizati", "aceasta", "acest", "aceste", "acesti", "acolo", "acum", "ai", "aici", "ajunge", "al", "ale", "am", "are", "as", "asa", "asta", "astea", "ati", "au", "avea", "avem", "aveti", "bine", "buc", "bucata", "bucati", "bucatile", "buna", "ca", "care", "cat", "cata", "cate", "cati", "ce", "cea", "cei", "cel", "cele", "ceva", "cm", "comandat", "cu", "cum", "cumva", "da", "daca", "dar", "dati", "dau", "de", "decat", "deci", "despre", "dimineata", "din", "doar", "doresc", "dori", "dumneavoastra", "dupa", "dvs", "e", "ei", "ele", "este", "eu", "eventual", "exista", "fac", "face", "facem", "faceti", "fara", "fi", "fie", "foarte", "frumos", "hello", "iar", "iau", "ii", "il", "imi", "in", "inainte", "insa", "inseamna", "intampla", "intreb", "intrebare", "la", "le", "lei", "lor", "lua", "luat", "lui", "ma", "mai", "mea", "mei", "mele", "merg", "merge", "mersi", "meu", "mi", "mm", "ms", "multumesc", "ne", "niste", "noi", "nu", "numai", "o", "ok", "ori", "pana", "pe", "pentru", "poate", "pot", "primesc", "primi", "prin", "pt", "ptr", "pun", "pune", "puse", "putem", "puteti", "rog", "ron", "s", "sa", "salut", "salutare", "sau", "se", "seara", "si", "spre", "spuneti", "sti", "stiti", "stiu", "stiut", "sunt", "sunteti", "toate", "tot", "trebuie", "tu", "ul", "un", "va", "veni", "vin", "vine", "voi", "vrea", "vreau", "x", "zi", "ziceti", "ziua"],
+  "product_concepts": ["banner", "mesh", "flyer", "vizita", "magnet", "kit", "textil", "dtf"],
   "phrases": {
     "masina de spalat vasele": "spalatvase",
     "masina de spalat vase": "spalatvase",
@@ -91,6 +92,8 @@
     "ma grabesc": "urgent",
     "pana maine": "urgent",
     "cate zile": "durata",
+    "de la cate bucati": "minim",
+    "cate bucati minim": "minim",
     "cat de repede": "durata",
     "in cat timp": "durata",
     "cat dureaza": "durata",
@@ -107,7 +110,7 @@
     "ani": ["ani", "anii", "an", "garantie", "garantia", "durabilitate", "durabile"],
     "spalatvase": ["spalatvase", "dishwasher", "detergent"],
     "frig": ["frig", "frigider", "frigiderul", "congelator", "congelatorul", "congelate", "congelat", "rece", "inghet", "inghetata", "gheata", "condens", "refrigerate", "refrigerat"],
-    "caldura": ["caldura", "caldurii", "microunde", "fierbinte", "fierbinti", "temperatura", "temperaturi", "cuptor", "lumanari", "lumanare", "topesc", "topeste", "sterilizate", "sterilizare", "pasteurizare", "grade"],
+    "caldura": ["caldura", "cald", "calda", "calde", "caldurii", "microunde", "fierbinte", "fierbinti", "temperatura", "temperaturi", "cuptor", "lumanari", "lumanare", "topesc", "topeste", "sterilizate", "sterilizare", "pasteurizare", "grade"],
     "aliment": ["aliment", "alimente", "alimentar", "alimentare", "mancare", "mancarea", "food", "comestibil", "fructe", "netoxice", "netoxic", "toxic", "toxice"],
     "chimic": ["chimic", "chimice", "chimicale", "alcool", "dezinfectant", "dezinfectanti", "solvent", "solventi", "benzina", "acetona", "spirt", "diluant", "motorina", "substante"],
     "material": ["material", "materiale", "materialul", "materialele", "vinil", "folie"],

@@ -6,7 +6,8 @@ Cum se alege un raspuns:
 3. Scorul combina cat din intrebare este acoperit de intrare cu cat din formularea intrarii se regaseste
    in intrebare; conceptele rare cantaresc mai mult.
 4. Sub pragul `min_score` nu se intoarce nimic.
-5. Intrarile `needs_owner` nu se intorc niciodata, dar participa la clasament: daca o intrebare
+5. O intrare scrisa pentru anumite produse (`applies_to`) nu raspunde cand intrebarea numeste alt produs.
+6. Intrarile `needs_owner` nu se intorc niciodata, dar participa la clasament: daca o intrebare
    deschisa se potriveste cel putin la fel de bine ca cel mai bun raspuns aprobat, rezultatul este
    lista goala. Asa „rezista la congelator?” nu primeste raspunsul despre apa.
 """
@@ -53,6 +54,9 @@ class KnowledgeBase:
             for text in (entry.question, *entry.variants, *entry.keywords):
                 self._lexicon.learn(text)
         self._index = [self._index_entry(entry) for entry in content.entries]
+        self._product_concepts = self._lexicon.product_concepts | frozenset(
+            c for item in self._index for name in item.applies for c in name
+        )
         counts: dict[str, int] = {}
         for item in self._index:
             for concept in set().union(item.keywords, *item.phrasings):
@@ -78,19 +82,33 @@ class KnowledgeBase:
     def _weight(self, concepts: frozenset[str] | set[str]) -> float:
         return sum(self._idf.get(concept, self._unknown_weight) for concept in concepts)
 
-    def _score(self, query: frozenset[str], item: _Indexed) -> float:
-        if not query & item.anchors:
+    def _score(self, query: frozenset[str], item: _Indexed, product: frozenset[str] = frozenset()) -> float:
+        """`product` sunt conceptele produsului cerut prin `applies_to`, cand intrarea este scrisa pentru el:
+        ele tin loc de ancora si nu se mai cer in formulare."""
+        if not (query | product) & item.anchors:
             return 0.0
+        query = query - product
         query_weight = self._weight(query)
+        if not query_weight:
+            return 0.0
         best = 0.0
         for phrasing in item.phrasings:
+            phrasing = phrasing - product
+            if not phrasing:
+                continue
             recall = self._weight(query & (phrasing | item.keywords)) / query_weight
             precision = self._weight(query & phrasing) / self._weight(phrasing)
             best = max(best, _RECALL_WEIGHT * recall + (1 - _RECALL_WEIGHT) * precision)
         return best
 
-    def _applies(self, item: _Indexed, target: frozenset[str] | None) -> bool:
-        if target is None or not item.applies:
+    def _applies(self, item: _Indexed, target: frozenset[str] | None, query: frozenset[str]) -> bool:
+        """O intrare cu `applies_to` nu raspunde pentru alt produs, cerut explicit sau numit in intrebare."""
+        if not item.applies:
+            return True
+        named = query & self._product_concepts
+        if not named <= frozenset().union(*item.applies):
+            return False
+        if target is None:
             return True
         return any(name <= target or target <= name for name in item.applies if name)
 
@@ -100,15 +118,17 @@ class KnowledgeBase:
         if not concepts:
             return []
         target = frozenset(self._lexicon.concepts(applies_to)) if applies_to and applies_to.strip() else None
-        ranked: list[Match] = []
+        ranked: list[tuple[bool, Match]] = []
         for item in self._index:
-            if not self._applies(item, target):
+            if not self._applies(item, target, concepts):
                 continue
-            score = self._score(concepts, item)
+            specific = bool(item.applies) and target is not None
+            product = frozenset().union(*item.applies) if specific else frozenset()
+            score = self._score(concepts, item, product)
             if score >= self._policy.min_score:
-                ranked.append(Match(id=item.entry.id, status=item.entry.status, score=round(score, 4)))
-        ranked.sort(key=lambda match: (-match.score, match.status != "needs_owner", match.id))
-        return ranked
+                ranked.append((specific, Match(id=item.entry.id, status=item.entry.status, score=round(score, 4))))
+        ranked.sort(key=lambda row: (-row[1].score, row[1].status != "needs_owner", not row[0], row[1].id))
+        return [match for _, match in ranked]
 
     def search(self, query: str, limit: int = 5, applies_to: str | None = None) -> list[KnowledgeEntry]:
         """Doar intrarile `verified`, cele mai potrivite primele. Lista goala inseamna: intreaba un om.

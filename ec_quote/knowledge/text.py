@@ -64,6 +64,7 @@ class Lexicon:
     stopwords: frozenset[str] = frozenset()
     phrases: dict[str, str] = field(default_factory=dict)
     synonyms: dict[str, list[str]] = field(default_factory=dict)
+    product_concepts: frozenset[str] = frozenset()   # concepte care numesc un produs fara intrari proprii
 
     def __post_init__(self) -> None:
         self._forms: dict[str, str] = {}
@@ -79,6 +80,7 @@ class Lexicon:
             if ordered else None
         )
         self._known: set[str] = set(self._forms)
+        self._names: set[str] = set(self.synonyms) | set(self.phrases.values())
 
     def learn(self, text: str) -> None:
         """Adauga cuvintele unui text la vocabularul folosit pentru corectarea greselilor de tastare."""
@@ -86,6 +88,8 @@ class Lexicon:
 
     def concept(self, word: str) -> str:
         """Conceptul unui cuvant: sinonim exact, apoi radacina, apoi cea mai apropiata forma cunoscuta."""
+        if word in self._names:
+            return word
         if word in self._forms:
             return self._forms[word]
         root = stem(word)

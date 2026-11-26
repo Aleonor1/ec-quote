@@ -1,0 +1,432 @@
+{
+  "topic": "fisiere",
+  "entries": [
+    {
+      "id": "formate-acceptate",
+      "question": "În ce format trimit fișierul?",
+      "answer": "Acceptăm fișiere PNG, JPG, PDF, SVG sau AI, de cel mult 25 MB, câte un fișier pentru fiecare model.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, zona de încărcare din calculator („Formate acceptate: PNG, JPG, PDF, SVG, AI. Max: 25MB | 1 fișier”)",
+      "status": "verified",
+      "anchors": [
+        "format",
+        "fisier"
+      ],
+      "variants": [
+        "ce format de fisier va trebuie",
+        "pot trimite pdf",
+        "merge un png",
+        "ce fisiere acceptati",
+        "in ce format sa fie logo-ul",
+        "pot trimite o poza jpg"
+      ],
+      "keywords": [
+        "format",
+        "fisier",
+        "png",
+        "jpg",
+        "pdf",
+        "svg",
+        "ai"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard (calculator, zona de upload)",
+        "repo:extensions/calculator/locales/ro.json calculator.upload_hint",
+        "shopify:shop.metafield calculator.settings fileUpload"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "fileUpload.acceptedFormats",
+        "fileUpload.maxSizeMB"
+      ],
+      "note_for_staff": "Setările calculatorului mai listează ZIP și PSD, care nu apar în textul afișat clientului. Vezi contradicția formate-fisier."
+    },
+    {
+      "id": "cerinte-fisier",
+      "question": "Cum trebuie pregătit fișierul pentru tipar?",
+      "answer": "Ideal: rezoluție de minimum 300 DPI, culori CMYK, bleed de minimum 2 mm pe toate laturile, elementele importante la cel puțin 1 mm în interiorul liniei de tăiere și fonturi de minimum 6 pt.",
+      "applies_to": [],
+      "source": "politica de retur, secțiunea 3.1, și termenii și condițiile, secțiunea 4.1 (specificații tehnice pentru fișiere)",
+      "status": "verified",
+      "anchors": [
+        "fisier",
+        "bleed",
+        "rezolutie",
+        "cmyk"
+      ],
+      "variants": [
+        "ce rezolutie trebuie sa aiba fisierul",
+        "trebuie bleed",
+        "cum pregatesc grafica pentru print",
+        "ce cerinte tehnice aveti",
+        "cat de mare sa fie poza",
+        "trebuie sa fie vectorial"
+      ],
+      "keywords": [
+        "cerinte",
+        "rezolutie",
+        "dpi",
+        "cmyk",
+        "bleed",
+        "fonturi",
+        "zona de siguranta"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §3.1",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §4.1"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "rules.json din ec-quote consideră fișierul bun de la 150 DPI. Vezi contradicția dpi-minim."
+    },
+    {
+      "id": "culori-rgb",
+      "question": "Vor ieși culorile exact ca pe ecran?",
+      "answer": "Pot apărea diferențe. Fișierele RGB sunt convertite automat în CMYK la tipar, ceea ce poate produce diferențe vizibile de culoare față de ecran. Pentru culori cât mai fidele, exportați fișierul în CMYK.",
+      "applies_to": [],
+      "source": "politica de retur, secțiunea 3.1 (spațiu de culoare) și termenii și condițiile, secțiunea 4.1",
+      "status": "verified",
+      "anchors": [
+        "culoare",
+        "rgb"
+      ],
+      "variants": [
+        "culorile ies la fel ca in poza",
+        "de ce difera culorile",
+        "fisierul meu e rgb",
+        "iese acelasi albastru"
+      ],
+      "keywords": [
+        "culori",
+        "rgb",
+        "cmyk",
+        "ecran",
+        "nuanta"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §3.1",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §4.1"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "fisier-canva",
+      "question": "Am făcut designul în Canva. Cum îl trimit?",
+      "answer": "Exportați-l din Canva ca PNG, cu fundal transparent.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, nota din zona de încărcare a calculatorului („Design făcut în Canva? Exportă-l ca PNG, cu fundal transparent.”)",
+      "status": "verified",
+      "anchors": [
+        "canva"
+      ],
+      "variants": [
+        "am logo-ul in canva",
+        "merge un design din canva",
+        "cum export din canva"
+      ],
+      "keywords": [
+        "canva",
+        "export",
+        "fundal transparent"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard (calculator, zona de upload)"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "Politica de retur avertizează că exporturile din Canva pot avea diferențe de culoare sau probleme de transparență (§3.1)."
+    },
+    {
+      "id": "fisier-calitate-slaba",
+      "question": "Ce se întâmplă dacă fișierul are calitate slabă?",
+      "answer": "Un fișier sub 300 DPI poate ieși neclar sau pixelat la tipar. La comandă puteți alege opțiunea Editare fișier: Upscale sau Vectorizare, contra cost. Dacă vectorizarea nu este posibilă pentru fișierul dumneavoastră, vă returnăm contravaloarea ei sau facem în schimb un upscale.",
+      "applies_to": [],
+      "source": "politica de retur, secțiunea 3.1 (rezoluție minimă 300 DPI) și opțiunea „Editare fișier” din calculator, cu explicația ei",
+      "status": "verified",
+      "anchors": [
+        "calitate",
+        "pixelat",
+        "vectorizare"
+      ],
+      "variants": [
+        "am doar o poza mica cu logo-ul",
+        "logo-ul meu e neclar",
+        "puteti imbunatati calitatea pozei",
+        "faceti vectorizare",
+        "fisierul e pixelat",
+        "am logo-ul doar ca screenshot",
+        "nu am fisierul in calitate buna"
+      ],
+      "keywords": [
+        "calitate slaba",
+        "pixelat",
+        "neclar",
+        "vectorizare",
+        "upscale",
+        "rezolutie mica"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §3.1",
+        "shopify:shop.metafield calculator.settings fileEditing (label, hint, options)"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "fileEditing.options"
+      ],
+      "note_for_staff": "Taxele pentru Upscale și Vectorizare vin din calculator-config; nu se spun din memorie."
+    },
+    {
+      "id": "simulare-inainte-de-tipar",
+      "question": "Primesc o simulare înainte de tipar?",
+      "answer": "Da. Simularea grafică este gratuită la fiecare comandă, iar producția începe după ce o aprobați. Prin aprobare confirmați designul, culorile și dimensiunile.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, bannerul „Simulare gratuită la fiecare comandă” și paginile de produs; termenii și condițiile, secțiunea 2 (Bun de Tipar)",
+      "status": "verified",
+      "anchors": [
+        "simulare"
+      ],
+      "variants": [
+        "imi aratati cum arata inainte sa le printati",
+        "primesc bun de tipar",
+        "trimiteti o macheta inainte",
+        "pot vedea o previzualizare",
+        "aprob ceva inainte de productie",
+        "primesc bt"
+      ],
+      "keywords": [
+        "simulare",
+        "bun de tipar",
+        "bt",
+        "macheta",
+        "previzualizare",
+        "aprobare"
+      ],
+      "source_refs": [
+        "site:/ (subsol și bannerele de sus, pe toate paginile)",
+        "site:/products/<produs> secțiunea „Specificații tehnice” (toate stickerele și etichetele)",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §2",
+        "shopify:shop.metafield calculator.settings trustBadges („Dovada online gratuita”)"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "Politica de retur spune că fișierele nu se verifică în prealabil. Vezi contradicția simulare-bt."
+    },
+    {
+      "id": "fara-grafica",
+      "question": "Nu am grafică. O puteți face voi?",
+      "answer": "Da. La comandă puteți alege „Nu am grafică, o faceți voi” și descrieți pe scurt ce doriți să apară (text, culori, stil). Vă trimitem grafica spre aprobare înainte de tipar.",
+      "applies_to": [],
+      "source": "calculatorul de pe site, opțiunea „Nu am grafică, o faceți voi” și nota ei",
+      "status": "verified",
+      "anchors": [
+        "grafica",
+        "design",
+        "logo"
+      ],
+      "variants": [
+        "nu am design",
+        "imi puteti face voi designul",
+        "nu am logo",
+        "faceti si grafica",
+        "am doar o idee",
+        "ma puteti ajuta cu designul"
+      ],
+      "keywords": [
+        "grafica",
+        "design",
+        "fara fisier",
+        "creatie"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/locales/ro.json calculator.artwork_design_label / artwork_design_note"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "Costul graficii la stickere și etichete nu este publicat (vezi întrebarea cost-grafica)."
+    },
+    {
+      "id": "grafica-carti-flyere",
+      "question": "Cât costă grafica la cărți de vizită și flyere?",
+      "answer": "La cărți de vizită și flyere: grafica dumneavoastră pe șablonul nostru este gratuită, așezarea fișierului pe șablon costă 25 lei, iar grafica făcută de noi 70 lei.",
+      "applies_to": [
+        "Carti de Vizita",
+        "Flyere"
+      ],
+      "source": "etichetecreative.ro, prima pagină, secțiunea Flyere și Cărți de vizită („Îți așezăm noi fișierul pe șablon +25 RON”, „Îți facem noi grafica +70 RON”)",
+      "status": "verified",
+      "anchors": [
+        "vizita",
+        "flyer"
+      ],
+      "variants": [
+        "faceti voi designul la cartile de vizita",
+        "cat costa designul pentru flyer",
+        "nu am grafica pentru carti de vizita"
+      ],
+      "keywords": [
+        "carti de vizita",
+        "flyere",
+        "grafica",
+        "sablon",
+        "design"
+      ],
+      "source_refs": [
+        "site:/ secțiunea „Flyere / Cărți de vizită”",
+        "repo:features/application-architecture.md:554"
+      ],
+      "last_checked": "2026-11-26",
+      "amounts": [
+        {
+          "text": "25 lei",
+          "source": "site:/ secțiunea „Flyere / Cărți de vizită” („+25 RON”)"
+        },
+        {
+          "text": "70 lei",
+          "source": "site:/ secțiunea „Flyere / Cărți de vizită” („+70 RON”); descrierile kiturilor („îl facem noi pentru 70 lei”)"
+        }
+      ]
+    },
+    {
+      "id": "fisier-dupa-comanda",
+      "question": "Pot trimite fișierul după ce plasez comanda?",
+      "answer": "Da. La comandă bifați „Nu am fișierul acum, îl trimit după comandă”, apoi ni-l trimiteți pe WhatsApp sau ca răspuns la emailul de confirmare, cu numărul comenzii. Producția începe după ce primim fișierul.",
+      "applies_to": [],
+      "source": "calculatorul de pe site, opțiunea „Nu am fișierul acum, îl trimit după comandă” și nota ei",
+      "status": "verified",
+      "anchors": [
+        "fisier",
+        "dupa"
+      ],
+      "variants": [
+        "nu am fisierul acum",
+        "va trimit logo-ul mai tarziu",
+        "pot comanda fara fisier",
+        "trimit grafica dupa plata"
+      ],
+      "keywords": [
+        "fisier",
+        "dupa comanda",
+        "mai tarziu",
+        "fara fisier"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/locales/ro.json calculator.artwork_later_label / artwork_later_note"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "linii-de-taiere",
+      "question": "Ce se întâmplă dacă fișierul are deja linii de tăiere?",
+      "answer": "Dacă documentul conține linii de cut, trim marks sau cutline, produsul va fi tăiat exact pe acestea, conform fișierului primit.",
+      "applies_to": [],
+      "source": "termenii și condițiile, secțiunea 4.1 (linii de tăiere)",
+      "status": "verified",
+      "anchors": [
+        "cutline",
+        "linie"
+      ],
+      "variants": [
+        "am pus eu linia de taiere in fisier",
+        "fisierul are cutline",
+        "taiati dupa conturul din fisier",
+        "am trim marks"
+      ],
+      "keywords": [
+        "cutline",
+        "linie de taiere",
+        "trim marks",
+        "contur in fisier"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §4.1"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "verificare-fisier",
+      "question": "Verificați sau corectați voi fișierul?",
+      "answer": "Tipărim exact ce se află în fișierul primit și nu îl modificăm fără solicitare. Vă rugăm să verificați textul, culorile și dimensiunile înainte de aprobare: erorile care provin din fișier nu pot fi reclamate ulterior.",
+      "applies_to": [],
+      "source": "politica de retur, secțiunea 3, și termenii și condițiile, secțiunile 4 și 4.2",
+      "status": "verified",
+      "anchors": [
+        "verificare",
+        "greseala",
+        "corectare"
+      ],
+      "variants": [
+        "imi corectati greselile din text",
+        "verificati voi fisierul",
+        "daca am o greseala de scriere",
+        "cine raspunde daca fisierul e gresit"
+      ],
+      "keywords": [
+        "verificare",
+        "corectare",
+        "greseli",
+        "raspundere",
+        "text"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §3",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §4"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "cost-grafica",
+      "question": "Cât costă grafica făcută de voi la stickere și etichete?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Site-ul publică prețuri pentru grafică doar la cărți de vizită și flyere (25 și 70 lei) și grafică gratuită la bannere; la stickere și etichete nu apare niciun cost.",
+      "status": "needs_owner",
+      "anchors": [
+        "grafica",
+        "design"
+      ],
+      "variants": [
+        "cat costa sa imi faceti designul",
+        "e gratis grafica",
+        "cat luati pentru un logo",
+        "cate modificari pot cere la grafica"
+      ],
+      "keywords": [
+        "cost grafica",
+        "pret design",
+        "modificari"
+      ],
+      "source_refs": [
+        "site:/ secțiunea „Flyere / Cărți de vizită”",
+        "shopify:product banner-publicitar descriptionHtml",
+        "repo:extensions/calculator/assets/calculator.js:2310 getArtworkDesignFee"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Cât costă grafica făcută de noi la stickere și etichete (opțiunea „Nu am grafică, o faceți voi”) și câte runde de modificări include? (ex.: gratuit, 2 runde)"
+    },
+    {
+      "id": "culoare-exacta",
+      "question": "Puteți garanta o culoare exactă (Pantone)?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Politicile spun doar că diferențele de culoare față de ecran nu pot fi reclamate.",
+      "status": "needs_owner",
+      "anchors": [
+        "pantone",
+        "nuanta"
+      ],
+      "variants": [
+        "am nevoie de pantone exact",
+        "puteti potrivi culoarea brandului",
+        "faceti proba de culoare",
+        "vreau exact nuanta asta"
+      ],
+      "keywords": [
+        "pantone",
+        "culoare exacta",
+        "proba de culoare",
+        "nuanta"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §3.1"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Putem reproduce o culoare Pantone exactă sau trimite o probă de culoare înainte de tiraj? (nu / da, în ce condiții)"
+    }
+  ]
+}

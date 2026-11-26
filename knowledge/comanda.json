@@ -1,0 +1,406 @@
+{
+  "topic": "comanda",
+  "entries": [
+    {
+      "id": "cantitate-minima",
+      "question": "Care este cantitatea minimă?",
+      "answer": "Comanda minimă este cea afișată în calculatorul de pe pagina fiecărui produs și se aplică pentru fiecare model în parte. Prețul pe bucată scade odată cu cantitatea.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, specificațiile de pe paginile de produs („Cantitate minimă”) și setările calculatorului",
+      "status": "verified",
+      "anchors": [
+        "minim",
+        "putin"
+      ],
+      "variants": [
+        "care e comanda minima",
+        "de la cate bucati pot comanda",
+        "pot comanda doar 10 bucati",
+        "cate bucati minim",
+        "se poate si o cantitate mai mica",
+        "vreau doar cateva bucati"
+      ],
+      "keywords": [
+        "minim",
+        "cantitate minima",
+        "bucati",
+        "comanda minima"
+      ],
+      "source_refs": [
+        "site:/products/<produs> secțiunea „Specificații tehnice” (toate stickerele și etichetele)",
+        "shopify:shop.metafield calculator.settings minQuantity",
+        "shopify:product.metafield calculator.config minQuantity",
+        "site:/products/eticheta-revizie-generala FAQ „Care este cantitatea minimă?”"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "minQuantity",
+        "product.minQuantity"
+      ],
+      "note_for_staff": "Valoarea se ia din calculator-config la momentul răspunsului. La 2026-11-26 site-ul afișa 50 de bucăți la stickere și etichete și 100 de bucăți pe model la etichetele pentru service auto."
+    },
+    {
+      "id": "mai-multe-modele",
+      "question": "Pot împărți cantitatea pe mai multe modele?",
+      "answer": "Fiecare model se configurează separat, cu cantitatea lui. De exemplu, 100 de bucăți nu pot fi împărțite în 4 modele a câte 25. Adăugați primul model în coș, apoi apăsați „+ Mai adaug un model”: păstrăm automat dimensiunea, materialul și cantitatea.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, FAQ-ul de pe paginile de produs și nota din calculator despre mai multe modele",
+      "status": "verified",
+      "anchors": [
+        "model",
+        "design",
+        "grafica"
+      ],
+      "variants": [
+        "pot comanda 4 modele a cate 25 de bucati",
+        "am mai multe modele",
+        "vreau modele diferite in aceeasi comanda",
+        "se pot face mai multe designuri la 100 de bucati",
+        "am 3 grafici diferite"
+      ],
+      "keywords": [
+        "modele",
+        "mai multe",
+        "diferite",
+        "designuri"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard#faq (același bloc FAQ pe paginile de stickere și etichete)",
+        "repo:extensions/calculator/locales/ro.json calculator.faq_multi_model_answer",
+        "repo:extensions/calculator/locales/ro.json calculator.multi_notice_tip",
+        "repo:extensions/calculator/locales/ro.json calculator.single_design_note"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "cum-comand",
+      "question": "Cum pot comanda?",
+      "answer": "Comanda se face online, pe pagina produsului: alegeți forma, dimensiunea și cantitatea, încărcați grafica și vedeți pe loc prețul cu TVA inclus. Comanda se poate trimite și prin email, cu toate detaliile.",
+      "applies_to": [],
+      "source": "termenii și condițiile, secțiunea 2 („comanda se face online sau prin email cu detalii complete”) și calculatorul de pe paginile de produs",
+      "status": "verified",
+      "anchors": [
+        "comanda"
+      ],
+      "variants": [
+        "cum comand",
+        "cum fac o comanda",
+        "unde plasez comanda",
+        "pot comanda pe whatsapp",
+        "care sunt pasii de comanda",
+        "cum functioneaza comanda"
+      ],
+      "keywords": [
+        "comanda",
+        "pasi",
+        "online",
+        "site"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §2",
+        "site:/products/sticker-standard (calculator)",
+        "site:/ (subsol și bannerele de sus, pe toate paginile)"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "reducere-cantitate",
+      "question": "Aveți reduceri la cantitate mare?",
+      "answer": "Da. Prețul pe bucată scade odată cu cantitatea, iar reducerea se aplică automat în calculator. Pentru cantități peste maximul din calculator vă facem ofertă.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, descrierile colecțiilor („prețul scade pe bucată la cantități mai mari”) și mesajul din calculator pentru cantități peste maxim",
+      "status": "verified",
+      "anchors": [
+        "reducere",
+        "cantitate",
+        "ieftin"
+      ],
+      "variants": [
+        "scade pretul la cantitate mare",
+        "aveti discount la volum",
+        "iese mai ieftin daca iau mai multe",
+        "pret pentru 20000 de bucati",
+        "vreau o cantitate foarte mare"
+      ],
+      "keywords": [
+        "reducere",
+        "cantitate mare",
+        "volum",
+        "discount",
+        "trepte"
+      ],
+      "source_refs": [
+        "shopify:collection stickere descriptionHtml",
+        "repo:extensions/calculator/locales/ro.json calculator.qty_max_msg",
+        "shopify:shop.metafield calculator.default_tiers"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "quantityTiers"
+      ],
+      "note_for_staff": "Procentele pe trepte vin doar din calculator. O cerere de reducere în afara treptelor merge la om (special_terms)."
+    },
+    {
+      "id": "promotii",
+      "question": "Aveți vreo promoție acum?",
+      "answer": "Promoțiile active sunt afișate pe site, iar reducerea se aplică automat la configurarea produsului.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, secțiunea „Campanii active” de pe prima pagină („Reducerea se aplică automat la configurarea produsului”)",
+      "status": "verified",
+      "anchors": [
+        "promotie",
+        "oferta",
+        "cod"
+      ],
+      "variants": [
+        "aveti oferte",
+        "ce promotii aveti",
+        "aveti cod de reducere",
+        "e vreo oferta saptamana asta"
+      ],
+      "keywords": [
+        "promotie",
+        "oferta",
+        "campanie",
+        "cod de reducere"
+      ],
+      "source_refs": [
+        "site:/ secțiunea „Campanii active”"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "Nu se numește nicio promoție din memorie: oferta trebuie să fie activă în Shopify în ziua răspunsului (regula owner-ului din 2026-11-13)."
+    },
+    {
+      "id": "recomanda-acelasi-design",
+      "question": "Pot comanda din nou același design?",
+      "answer": "Da. În contul dumneavoastră de pe site, la „Designurile mele”, găsiți designurile din comenzile livrate și butonul „Comandă din nou”. La o comandă nouă puteți alege și un fișier dintr-o comandă anterioară, fără să îl încărcați iar.",
+      "applies_to": [],
+      "source": "extensia de cont client („Designurile mele”, „Comandă din nou”) și calculatorul („Artwork-uri salvate”)",
+      "status": "verified",
+      "anchors": [
+        "recomanda",
+        "acelasi",
+        "anterior"
+      ],
+      "variants": [
+        "vreau sa repet comanda",
+        "mai vreau o data aceleasi stickere",
+        "aveti fisierul de data trecuta",
+        "pot refolosi designul vechi",
+        "aceeasi comanda ca luna trecuta",
+        "comanda din nou"
+      ],
+      "keywords": [
+        "recomanda",
+        "din nou",
+        "acelasi design",
+        "comanda anterioara",
+        "repet"
+      ],
+      "source_refs": [
+        "repo:extensions/customer-account/locales/en.default.json designs_heading / designs_reorder / designs_empty",
+        "repo:extensions/calculator/locales/ro.json calculator.saved_hint"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "dimensiuni",
+      "question": "Ce dimensiuni faceți?",
+      "answer": "Nu lucrăm doar cu mărimi fixe: alegeți una dintre dimensiunile propuse sau introduceți lățimea și înălțimea dorite, în centimetri. Dimensiunea minimă și cea maximă sunt afișate în calculator.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "calculatorul de pe paginile de produs (dimensiuni propuse și „Dimensiune personalizată”) și configurația produselor",
+      "status": "verified",
+      "anchors": [
+        "dimensiune"
+      ],
+      "variants": [
+        "ce marimi aveti",
+        "se pot face la orice dimensiune",
+        "care e dimensiunea maxima",
+        "care e dimensiunea minima",
+        "pot alege eu marimea",
+        "faceti 3x3 cm"
+      ],
+      "keywords": [
+        "dimensiune",
+        "marime",
+        "cm",
+        "latime",
+        "inaltime"
+      ],
+      "source_refs": [
+        "site:/products/sticker-standard (calculator)",
+        "repo:extensions/calculator/locales/ro.json calculator.custom_size / min_size / max_size",
+        "shopify:product.metafield calculator.config customSizeMinCm / customSizeMaxCm"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "product.customSizeMinCm",
+        "product.customSizeMaxCm"
+      ]
+    },
+    {
+      "id": "forme",
+      "question": "Ce forme puteți tăia?",
+      "answer": "Tăiem pe contur, în orice formă: formă personalizată, după design, sau cerc, oval, pătrat și dreptunghi.",
+      "applies_to": [],
+      "source": "calculatorul de pe paginile de produs (pasul „Alege o formă”) și specificațiile produselor („Tăiere: pe contur”)",
+      "status": "verified",
+      "anchors": [
+        "forma",
+        "contur"
+      ],
+      "variants": [
+        "se pot face rotunde",
+        "taiati pe contur",
+        "pot avea orice forma",
+        "faceti forme neregulate",
+        "stickere decupate dupa logo",
+        "aveti etichete ovale"
+      ],
+      "keywords": [
+        "forma",
+        "contur",
+        "rotund",
+        "oval",
+        "patrat",
+        "dreptunghi",
+        "die-cut"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/locales/ro.json calculator.custom_shape / circle / oval / square / rectangle",
+        "site:/products/<produs> secțiunea „Specificații tehnice” (toate stickerele și etichetele)",
+        "shopify:product.metafield calculator.config shapes"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "tip-taiere",
+      "question": "Ce tipuri de tăiere aveți?",
+      "answer": "Pe lângă tăierea standard, în calculator puteți alege Double Cut, mai ușor de desfăcut, sau Tăiat pe spate (tăiere pe verso). Ambele au un cost suplimentar calculat automat.",
+      "applies_to": [
+        "Sticker Standard",
+        "Sticker Premium",
+        "Sticker Transparente",
+        "Stickere Holografice",
+        "Stickere Gold",
+        "Stickere Chrome",
+        "Sticker Embossat",
+        "Sticker Sheet",
+        "Etichete Premium",
+        "Etichete Transparente",
+        "Etichete Holografice",
+        "Etichete Gold",
+        "Etichete Chrome",
+        "Etichete Embossed"
+      ],
+      "source": "calculatorul de pe site, pasul „Tip tăiere” (Standard, Double Cut, Tăiat pe spate) și setările calculatorului",
+      "status": "verified",
+      "anchors": [
+        "taiere"
+      ],
+      "variants": [
+        "se desprind usor de pe suport",
+        "aveti taiere pe spate",
+        "ce inseamna double cut",
+        "sunt taiate si pe spate",
+        "suportul e taiat"
+      ],
+      "keywords": [
+        "taiere",
+        "double cut",
+        "taiat pe spate",
+        "verso",
+        "suport"
+      ],
+      "source_refs": [
+        "repo:extensions/calculator/assets/calculator.js:245-250",
+        "shopify:shop.metafield calculator.settings doubleCut / backCut"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "doubleCut.percent",
+        "backCut.percent"
+      ]
+    },
+    {
+      "id": "program-fidelitate",
+      "question": "Aveți program de fidelitate?",
+      "answer": "Da. La fiecare comandă primiți credit în magazin, pe care îl folosiți la comenzile următoare. Valoarea creditului pentru comanda curentă apare în calculator.",
+      "applies_to": [],
+      "source": "setările calculatorului (credit magazin activ), textele din calculator și pagina de cont („Programul de fidelitate”)",
+      "status": "verified",
+      "anchors": [
+        "fidelitate",
+        "credit",
+        "cashback",
+        "puncte"
+      ],
+      "variants": [
+        "primesc ceva pentru comenzile repetate",
+        "aveti cashback",
+        "cum folosesc creditul",
+        "aveti puncte de loialitate"
+      ],
+      "keywords": [
+        "fidelitate",
+        "loialitate",
+        "credit",
+        "cashback"
+      ],
+      "source_refs": [
+        "shopify:shop.metafield calculator.settings storeCredit",
+        "repo:extensions/calculator/locales/ro.json calculator.loyalty_guest_earn",
+        "repo:extensions/customer-account/locales/en.default.json tier_heading"
+      ],
+      "last_checked": "2026-11-26",
+      "config_refs": [
+        "storeCredit.percentage"
+      ]
+    },
+    {
+      "id": "cantitate-sub-minim",
+      "question": "Se poate comanda sub cantitatea minimă?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Calculatorul refuză cantitățile sub minim; nicio sursă nu spune dacă facem excepții.",
+      "status": "needs_owner",
+      "anchors": [
+        "bucata"
+      ],
+      "variants": [
+        "vreau doar un sticker",
+        "imi trebuie o singura bucata",
+        "pot lua doar 5 bucati",
+        "faceti si la bucata",
+        "am nevoie de 20 de bucati"
+      ],
+      "keywords": [
+        "o bucata",
+        "un singur sticker",
+        "sub minim"
+      ],
+      "source_refs": [
+        "shopify:shop.metafield calculator.settings minQuantity",
+        "repo:/home/user/ec-agency/context/owner-rules.md rândul 2026-11-17 „stickere auto” (lumea caută un singur sticker)"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Acceptăm comenzi sub cantitatea minimă din calculator (de exemplu 10 sau 20 de bucăți)? Dacă da, în ce condiții? (nu / da, la prețul minimului)"
+    }
+  ]
+}

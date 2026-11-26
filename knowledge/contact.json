@@ -1,0 +1,133 @@
+{
+  "topic": "contact",
+  "entries": [
+    {
+      "id": "program",
+      "question": "Care este programul?",
+      "answer": "Programul nostru este de luni până vineri, între 9:00 și 18:00.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, pagina Contact („Program: Luni - Vineri: 9:00 - 18:00”); aceleași ore sunt în rules.json (business_hours)",
+      "status": "verified",
+      "anchors": [
+        "program"
+      ],
+      "variants": [
+        "pana la ce ora lucrati",
+        "sunteti deschisi sambata",
+        "ce program aveti",
+        "lucrati in weekend",
+        "la ce ora raspundeti",
+        "cand va pot suna"
+      ],
+      "keywords": [
+        "program",
+        "orar",
+        "ore",
+        "deschis",
+        "weekend"
+      ],
+      "source_refs": [
+        "site:/pages/contact",
+        "config:ec-quote/config/rules.json business_hours"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "date-contact",
+      "question": "Cum vă pot contacta?",
+      "answer": "Ne puteți scrie pe WhatsApp sau suna la 0792 772 295. Pentru comenzi și oferte: vanzari@etichetecreative.ro.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, pagina Contact și subsolul site-ului",
+      "status": "verified",
+      "anchors": [
+        "contact",
+        "telefon",
+        "email"
+      ],
+      "variants": [
+        "aveti un numar de telefon",
+        "pe ce email va scriu",
+        "care e adresa de email",
+        "cum dau de voi",
+        "aveti whatsapp"
+      ],
+      "keywords": [
+        "contact",
+        "telefon",
+        "email",
+        "whatsapp",
+        "numar"
+      ],
+      "source_refs": [
+        "site:/pages/contact",
+        "site:/ (subsol și bannerele de sus, pe toate paginile)",
+        "shopify:shop.shopPolicies CONTACT_INFORMATION"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "Regulile din ec-agency dau alt număr de WhatsApp pentru campania de mostre. Vezi contradicția telefon-whatsapp."
+    },
+    {
+      "id": "locatie",
+      "question": "Unde sunteți?",
+      "answer": "Producem totul în atelierul nostru din Cluj-Napoca, pe utilaje proprii. Etichete Creative este marca STICKER REV SRL.",
+      "applies_to": [],
+      "source": "etichetecreative.ro, descrierile colecțiilor („în atelierul nostru din Cluj-Napoca”), subsolul site-ului și prima pagină („Producție 100% internă”)",
+      "status": "verified",
+      "anchors": [
+        "locatie",
+        "unde",
+        "cluj"
+      ],
+      "variants": [
+        "de unde sunteti",
+        "in ce oras sunteti",
+        "unde aveti atelierul",
+        "sunteti din cluj",
+        "sunteti producatori"
+      ],
+      "keywords": [
+        "locatie",
+        "oras",
+        "cluj",
+        "atelier",
+        "producator"
+      ],
+      "source_refs": [
+        "shopify:collection stickere descriptionHtml",
+        "shopify:collection etichete descriptionHtml",
+        "site:/ (subsol și bannerele de sus, pe toate paginile)"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "date-firma",
+      "question": "Care sunt datele firmei?",
+      "answer": "STICKER REV SRL, CUI 48772870, cu sediul în Cluj-Napoca, Str. Eugen Ionesco nr. 67. Firma este plătitoare de TVA.",
+      "applies_to": [],
+      "source": "subsolul site-ului și politica de confidențialitate, secțiunea 1; termenii și condițiile, secțiunea 3",
+      "status": "verified",
+      "anchors": [
+        "firma",
+        "cui"
+      ],
+      "variants": [
+        "cum se numeste firma",
+        "ce cui aveti",
+        "datele societatii"
+      ],
+      "keywords": [
+        "firma",
+        "cui",
+        "srl",
+        "sediu",
+        "date"
+      ],
+      "source_refs": [
+        "site:/ (subsol și bannerele de sus, pe toate paginile)",
+        "shopify:shop.shopPolicies PRIVACY_POLICY §1",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §3"
+      ],
+      "last_checked": "2026-11-26"
+    }
+  ]
+}

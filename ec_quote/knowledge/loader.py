@@ -110,7 +110,8 @@ def _money_mentions(text: str) -> list[str]:
     ]
 
 
-def _check_text(where: str, label: str, text: str, policy: Policy) -> None:
+def _check_text(where: str, label: str, text: str, policy: Policy, claims: bool = False) -> None:
+    """Reguli de scriere pentru orice text; `claims` adauga cuvintele interzise (doar pentru raspunsuri)."""
     for dash in _DASHES:
         if dash in text:
             raise KnowledgeError(f"{where}: {label} contine linie de dialog (em dash sau en dash)")
@@ -121,6 +122,8 @@ def _check_text(where: str, label: str, text: str, policy: Policy) -> None:
         raise KnowledgeError(f"{where}: {label} contine emoji")
     if "{{" in text or "}}" in text:
         raise KnowledgeError(f"{where}: {label} contine un substituent necompletat")
+    if not claims:
+        return
     plain = normalize(text)
     for word in policy.forbidden_words:
         if re.search(r"(?<![a-z0-9])" + re.escape(normalize(word)) + r"(?![a-z0-9])", plain):
@@ -164,7 +167,7 @@ def _check_entry(where: str, entry: AuthoredEntry, topic: str, policy: Policy) -
         raise KnowledgeError(
             f"{where}: raspunsul are {len(entry.answer)} caractere, peste limita de {policy.max_answer_chars}"
         )
-    _check_text(where, "raspunsul", entry.answer, policy)
+    _check_text(where, "raspunsul", entry.answer, policy, claims=True)
 
     flagged = {normalize(amount.text) for amount in entry.amounts}
     for amount in entry.amounts:
@@ -217,7 +220,13 @@ def _load_lexicon(root: Path) -> Lexicon:
     for word in stopwords:
         if word in seen:
             raise KnowledgeError(f"_lexicon.json: {word!r} este si cuvant ignorat, si sinonim")
-    return Lexicon(stopwords=frozenset(stopwords), phrases=dict(phrases), synonyms=dict(synonyms))
+    products = raw.get("product_concepts", [])
+    if not isinstance(products, list) or any(name not in synonyms for name in products):
+        raise KnowledgeError("_lexicon.json: product_concepts trebuie sa fie o lista de concepte din synonyms")
+    return Lexicon(
+        stopwords=frozenset(stopwords), phrases=dict(phrases), synonyms=dict(synonyms),
+        product_concepts=frozenset(products),
+    )
 
 
 def _load_contradictions(root: Path, policy: Policy) -> list[Contradiction]:

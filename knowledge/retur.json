@@ -1,0 +1,129 @@
+{
+  "topic": "retur",
+  "entries": [
+    {
+      "id": "retur-produse-personalizate",
+      "question": "Pot returna comanda?",
+      "answer": "Produsele personalizate nu pot fi returnate, pentru că sunt realizate special după specificațiile dumneavoastră (OUG 34/2014, art. 16 lit. c). Dacă produsele au un defect de fabricație sau au fost deteriorate la transport, le înlocuim.",
+      "applies_to": [],
+      "source": "politica de retur a magazinului, secțiunile 1 și 6",
+      "status": "verified",
+      "anchors": [
+        "retur"
+      ],
+      "variants": [
+        "se pot returna",
+        "vreau sa returnez stickerele",
+        "am 14 zile de retur",
+        "imi dati banii inapoi",
+        "pot face retur",
+        "nu imi mai trebuie le pot trimite inapoi"
+      ],
+      "keywords": [
+        "retur",
+        "returnare",
+        "banii inapoi",
+        "14 zile"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §1",
+        "shopify:shop.shopPolicies REFUND_POLICY §6"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "anulare-comanda",
+      "question": "Pot anula sau modifica comanda?",
+      "answer": "O comandă poate fi anulată în cel mult 1 oră de la plasare, printr-un mesaj către noi. După acest termen intră în procesare și nu mai poate fi anulată sau modificată.",
+      "applies_to": [],
+      "source": "politica de retur a magazinului, secțiunea 2 (termen limită de 1 oră)",
+      "status": "verified",
+      "anchors": [
+        "anulare",
+        "modificare"
+      ],
+      "variants": [
+        "vreau sa anulez comanda",
+        "pot schimba ceva la comanda",
+        "am gresit comanda",
+        "renunt la comanda",
+        "pot modifica dimensiunea dupa ce am comandat",
+        "vreau sa schimb fisierul"
+      ],
+      "keywords": [
+        "anulare",
+        "modificare",
+        "renunt",
+        "schimbare"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §2"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "În timpul unei campanii promoționale active, anulările și rambursările se procesează abia după încheierea campaniei (§2.1). O cerere de anulare se predă unui om."
+    },
+    {
+      "id": "produse-defecte",
+      "question": "Ce fac dacă produsele au ajuns deteriorate sau au un defect?",
+      "answer": "Vă rugăm să ne anunțați în cel mult 48 de ore de la primire, pe email, cu fotografii clare ale produsului și, de preferat, ale ambalajului. După verificare înlocuim produsele și suportăm noi costurile de transport. Se face înlocuire, nu rambursare.",
+      "applies_to": [],
+      "source": "politica de retur a magazinului, secțiunea 6, și termenii și condițiile, secțiunea 6",
+      "status": "verified",
+      "anchors": [
+        "reclamatie",
+        "defect"
+      ],
+      "variants": [
+        "au ajuns deteriorate",
+        "stickerele au un defect",
+        "coletul a venit rupt",
+        "nu sunt multumit de cum au iesit",
+        "vreau sa fac o reclamatie",
+        "au iesit prost printate"
+      ],
+      "keywords": [
+        "defect",
+        "deteriorat",
+        "reclamatie",
+        "inlocuire",
+        "48 de ore"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §6",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §6"
+      ],
+      "last_checked": "2026-11-26",
+      "note_for_staff": "O reclamație se predă întotdeauna unui om (handoff complaint); textul este doar procedura publicată."
+    },
+    {
+      "id": "reclamatii-din-fisier",
+      "question": "Se pot reclama greșelile care vin din fișierul meu?",
+      "answer": "Erorile de tipar, culoare, text sau design care provin din fișierul trimis nu sunt eligibile pentru înlocuire sau rambursare.",
+      "applies_to": [],
+      "source": "politica de retur a magazinului, secțiunile 3 și 6, și termenii și condițiile, secțiunea 6",
+      "status": "verified",
+      "anchors": [
+        "reclamatie",
+        "greseala"
+      ],
+      "variants": [
+        "am gresit eu textul mi le refaceti",
+        "culorile nu sunt ca in fisierul meu",
+        "am trimis fisierul gresit",
+        "a iesit taiat un element din design"
+      ],
+      "keywords": [
+        "greseala in fisier",
+        "eroare",
+        "text gresit",
+        "refacere"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies REFUND_POLICY §3",
+        "shopify:shop.shopPolicies REFUND_POLICY §6",
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §6"
+      ],
+      "last_checked": "2026-11-26"
+    }
+  ]
+}

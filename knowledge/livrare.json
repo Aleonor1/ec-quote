@@ -1,0 +1,226 @@
+{
+  "topic": "livrare",
+  "entries": [
+    {
+      "id": "cost-livrare",
+      "question": "Cât costă livrarea?",
+      "answer": "Livrarea în România costă 25 lei și este gratuită la comenzile de peste 350 lei.",
+      "applies_to": [],
+      "source": "tarifele de livrare active din Shopify și bannerul de pe site („Transport gratuit la comenzi peste 350 lei”)",
+      "status": "verified",
+      "anchors": [
+        "livrare"
+      ],
+      "variants": [
+        "cat costa transportul",
+        "cat e livrarea",
+        "aveti transport gratuit",
+        "de la ce suma e livrarea gratuita",
+        "se plateste transportul",
+        "taxa de livrare"
+      ],
+      "keywords": [
+        "cost",
+        "transport",
+        "livrare",
+        "gratuit",
+        "taxa"
+      ],
+      "source_refs": [
+        "shopify:deliveryProfiles „General profile”, zona Domestic (România), metoda „Transport”",
+        "site:/ (subsol și bannerele de sus, pe toate paginile)"
+      ],
+      "last_checked": "2026-11-26",
+      "amounts": [
+        {
+          "text": "25 lei",
+          "source": "shopify:deliveryProfiles „General profile”, zona Domestic (România), metoda „Transport”, tarif fix"
+        },
+        {
+          "text": "350 lei",
+          "source": "shopify:deliveryProfiles „General profile”, zona Domestic (România), metoda „Transport”, prag pentru tarif zero; site:/ (subsol și bannerele de sus, pe toate paginile)"
+        }
+      ]
+    },
+    {
+      "id": "curieri",
+      "question": "Cu ce curier livrați?",
+      "answer": "Livrăm prin curier. Colaborăm cu GLS, DPD și Packeta.",
+      "applies_to": [],
+      "source": "politica de confidențialitate a magazinului, secțiunile 2 și 5 (curieri: GLS, DPD și Packeta); CRM-ul intern expediază prin MyGLS",
+      "status": "verified",
+      "anchors": [
+        "curier"
+      ],
+      "variants": [
+        "prin ce firma de curierat trimiteti",
+        "trimiteti cu fan courier",
+        "livrati cu sameday",
+        "ce curier folositi",
+        "cu cine trimiteti coletul"
+      ],
+      "keywords": [
+        "curier",
+        "gls",
+        "dpd",
+        "packeta",
+        "curierat"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies PRIVACY_POLICY §2 și §5",
+        "repo:/home/user/crm-etichete-creative/PRODUCT.md"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "livrare-romania",
+      "question": "Livrați în toată țara?",
+      "answer": "Da, expediem prin curier în toată România.",
+      "applies_to": [],
+      "source": "zona de livrare activă din Shopify (România) și eticheta din calculator („Expediat în toată România!”)",
+      "status": "verified",
+      "anchors": [
+        "tara",
+        "romania",
+        "oras"
+      ],
+      "variants": [
+        "livrati si in bucuresti",
+        "trimiteti in orice oras",
+        "livrati la sate",
+        "livrati in toata romania",
+        "trimiteti si la iasi"
+      ],
+      "keywords": [
+        "romania",
+        "tara",
+        "oras",
+        "judet",
+        "national"
+      ],
+      "source_refs": [
+        "shopify:deliveryProfiles „General profile”, zona Domestic (România), metoda „Transport”",
+        "shopify:shop.metafield calculator.settings translations.shippingBadge"
+      ],
+      "last_checked": "2026-11-26"
+    },
+    {
+      "id": "livrare-strainatate",
+      "question": "Livrați în afara României?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Pagina „Despre noi” spune „Livrăm în toată Europa”, dar în Shopify singura zonă de livrare este România.",
+      "status": "needs_owner",
+      "anchors": [
+        "strainatate"
+      ],
+      "variants": [
+        "trimiteti in germania",
+        "livrati in europa",
+        "livrati in strainatate",
+        "trimiteti in republica moldova",
+        "livrati international",
+        "trimiteti in uk"
+      ],
+      "keywords": [
+        "strainatate",
+        "europa",
+        "international",
+        "export"
+      ],
+      "source_refs": [
+        "site:/pages/despre-noi",
+        "shopify:deliveryProfiles „General profile”, zona Domestic (România), metoda „Transport”"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Livrăm în afara României? Dacă da, în ce țări, cu ce cost și cum se comandă, având în vedere că la checkout există doar România? (nu / da, cu ofertă separată)"
+    },
+    {
+      "id": "ridicare-personala",
+      "question": "Pot ridica personal comanda?",
+      "answer": "",
+      "applies_to": [],
+      "source": "În Shopify nu este configurată ridicarea locală; pagina de contact arată la locație doar „România”. Există două adrese în surse (vezi contradicția adresa).",
+      "status": "needs_owner",
+      "anchors": [
+        "ridicare"
+      ],
+      "variants": [
+        "pot veni sa le iau eu",
+        "aveti ridicare personala",
+        "pot ridica din cluj",
+        "unde e atelierul sa trec pe acolo",
+        "se poate ridica de la sediu"
+      ],
+      "keywords": [
+        "ridicare personala",
+        "sediu",
+        "atelier",
+        "cluj"
+      ],
+      "source_refs": [
+        "shopify:locations „Shop location” localPickupSettingsV2 = null",
+        "site:/pages/contact"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Poate clientul să ridice personal comanda din Cluj-Napoca? Dacă da, de la ce adresă și în ce program? (nu / da, adresa și orele)"
+    },
+    {
+      "id": "livrare-locker",
+      "question": "Livrați la easybox sau la un punct de ridicare?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Politica de confidențialitate pomenește „punct de ridicare sau locker ales”, dar la checkout există o singură metodă, „Transport”.",
+      "status": "needs_owner",
+      "anchors": [
+        "locker"
+      ],
+      "variants": [
+        "livrati la easybox",
+        "pot alege lockerul",
+        "livrare la pachetomat",
+        "pot alege curierul",
+        "trimiteti la punct packeta"
+      ],
+      "keywords": [
+        "easybox",
+        "locker",
+        "pachetomat",
+        "punct de ridicare"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies PRIVACY_POLICY §2",
+        "shopify:deliveryProfiles „General profile”, zona Domestic (România), metoda „Transport”"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Putem livra la locker (easybox, Packeta) sau la punct de ridicare, și poate clientul să aleagă curierul? (ex.: doar la adresă, cu GLS)"
+    },
+    {
+      "id": "livrare-km-suplimentari",
+      "question": "Se plătește ceva în plus pentru localitățile îndepărtate?",
+      "answer": "",
+      "applies_to": [],
+      "source": "Termenii și condițiile, secțiunea 5, au o formulare greu de transmis ca atare clientului.",
+      "status": "needs_owner",
+      "anchors": [
+        "kilometru",
+        "sat"
+      ],
+      "variants": [
+        "se platesc km suplimentari",
+        "locuiesc la tara costa mai mult",
+        "taxa de kilometri suplimentari"
+      ],
+      "keywords": [
+        "km suplimentari",
+        "localitate",
+        "taxa suplimentara"
+      ],
+      "source_refs": [
+        "shopify:shop.shopPolicies TERMS_OF_SERVICE §5"
+      ],
+      "last_checked": "2026-11-26",
+      "owner_question": "Cum explicăm clientului regula din Termeni, punctul 5, despre kilometrii suplimentari (taxa se achită la curier, iar cea plătită cu cardul se returnează)? (o propoziție)"
+    }
+  ]
+}
