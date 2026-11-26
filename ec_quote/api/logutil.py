@@ -40,8 +40,8 @@ class ContextFilter(logging.Filter):
         record.request_id = request_id_var.get()
         try:
             message = record.getMessage()
-        except Exception:  # argumente de formatare gresite: lasam linia cum este
-            return True
+        except Exception:  # argumente de formatare gresite: pastram sablonul, fara argumente
+            message = str(record.msg)
         record.msg = scrub(message)
         record.args = None
         return True

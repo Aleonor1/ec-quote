@@ -1,0 +1,17 @@
+# TLS automat (Let's Encrypt) pentru domeniul din EC_QUOTE_DOMAIN.
+{$EC_QUOTE_DOMAIN} {
+	encode gzip
+
+	# Putin peste EC_QUOTE_MAX_UPLOAD_MB (implicit 20); aplicatia aplica limita exacta.
+	request_body {
+		max_size 21MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	reverse_proxy app:8080
+}

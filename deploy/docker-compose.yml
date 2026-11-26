@@ -1,0 +1,49 @@
+# Pornire: din acest director, `docker compose up -d --build`. Vezi README.md.
+name: ec-quote
+
+services:
+  app:
+    build:
+      context: ..
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-}
+    env_file: ../.env
+    environment:
+      EC_QUOTE_DATA_DIR: /data
+      # Caddy este singurul proxy din fata aplicatiei: IP-ul clientului este ultimul din X-Forwarded-For.
+      EC_QUOTE_TRUSTED_PROXY_HOPS: "1"
+    volumes:
+      - ecquote_data:/data
+    expose:
+      - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      EC_QUOTE_DOMAIN: ${EC_QUOTE_DOMAIN:?seteaza EC_QUOTE_DOMAIN, de exemplu oferta.etichetecreative.ro}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  ecquote_data:
+    name: ecquote_data
+  caddy_data:
+  caddy_config:

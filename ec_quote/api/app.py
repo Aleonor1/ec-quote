@@ -117,6 +117,7 @@ class RequestContextMiddleware:
             if message["type"] == "http.request":
                 state["received"] += len(message.get("body", b""))
                 if state["received"] > limit:
+                    scope["ecq_body_too_large"] = True  # FastAPI poate inveli exceptia intr-un 400
                     raise BodyTooLarge
             return message
 
@@ -137,9 +138,10 @@ class RequestContextMiddleware:
         except Exception as exc:
             too_large = isinstance(exc, BodyTooLarge)
             if not too_large:
-                # Doar tipul si cadrele: mesajul exceptiei poate contine date ale clientului.
-                frames = "".join(traceback.format_tb(exc.__traceback__)[-6:])
-                logger.error("unhandled error type=%s\n%s", type(exc).__name__, frames)
+                # Doar tipul si locul: mesajul exceptiei si sursa pot contine date ale clientului.
+                frames = " < ".join(f"{Path(f.filename).name}:{f.lineno} {f.name}"
+                                    for f in reversed(traceback.extract_tb(exc.__traceback__)[-8:]))
+                logger.error("unhandled error type=%s at %s", type(exc).__name__, frames)
             if not state["status"]:
                 response = (_error_response(413, "body_too_large", "Cererea este prea mare.") if too_large
                             else _error_response(500, "internal_error", "Eroare interna."))
@@ -223,7 +225,9 @@ def create_app(
         return _error_response(422, "invalid_request", "Cerere invalida.", fields=fields)
 
     @app.exception_handler(StarletteHTTPException)
-    async def _http_error(_: Request, exc: StarletteHTTPException):
+    async def _http_error(request: Request, exc: StarletteHTTPException):
+        if request.scope.get("ecq_body_too_large"):
+            return _error_response(413, "body_too_large", "Cererea este prea mare.")
         code = HTTP_CODES.get(exc.status_code, "http_error")
         return _error_response(exc.status_code, code, "Cererea nu a putut fi procesata.")
 

@@ -319,3 +319,40 @@ def test_svg_is_accepted_as_artwork(tmp_path):
     api = build(tmp_path, handler=lambda r: httpx.Response(200, content=svg))
     assert post_with(api, attachment(mime="image/svg+xml")).status_code == 200
     assert api.engine.handled[0].attachments[0].mime == "image/svg+xml"
+
+
+def test_message_id_is_passed_to_the_engine_once_the_contract_has_the_field(tmp_path, monkeypatch):
+    from ec_quote.api import app as app_module
+    from ec_quote.contracts import InboundMessage
+
+    class WithMessageId(InboundMessage):
+        message_id: str | None = None
+
+    monkeypatch.setattr(app_module, "InboundMessage", WithMessageId)
+    api = build(tmp_path)
+    api.client.post("/v1/inbound", json=inbound_body(), headers=AUTH)
+    assert api.engine.handled[0].message_id == "wamid.TEST1"
+
+
+def test_default_resolver_blocks_a_host_that_points_to_loopback(tmp_path):
+    from ec_quote.api.fetcher import system_resolver
+
+    api = build(tmp_path, env={"EC_QUOTE_ATTACHMENT_HOSTS": "localhost"}, resolver=system_resolver)
+    response = post_with(api, attachment(url="https://localhost/a.png"))
+    assert response.json()["error"]["code"] == "attachment_host_not_allowed"
+    assert api.requests == []
+
+
+def test_sniffing_and_file_names():
+    from ec_quote.api.fetcher import normalize_mime, safe_filename, sniff_mime
+
+    assert sniff_mime(b"\xff\xd8\xff\xe0JFIF") == "image/jpeg"
+    assert sniff_mime(b"RIFF\x00\x00\x00\x00WEBPVP8 ") == "image/webp"
+    assert sniff_mime(b"II*\x00data") == "image/tiff" and sniff_mime(b"MM\x00*data") == "image/tiff"
+    assert sniff_mime(b"%!PS-Adobe-3.0 EPSF-3.0") == "application/postscript"
+    assert sniff_mime(b"\xef\xbb\xbf  <svg xmlns='x'>") == "image/svg+xml"
+    assert sniff_mime(b"<?xml version='1.0'?><html>") is None and sniff_mime(b"RIFF1234WAVE") is None
+    assert normalize_mime("Image/PNG; charset=binary") == "image/png" and normalize_mime(None) == ""
+    assert safe_filename(None) is None and safe_filename("../../") is None
+    assert safe_filename("C:\\Users\\x\\logo\x00.png") == "logo.png"
+    assert len(safe_filename("a" * 500)) == 120

@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ec_quote.api.app import create_app
+from ec_quote.api.store import ApiStore
 from ec_quote.config import load_settings
 from ec_quote.contracts import OutboundAction
 
@@ -64,6 +65,16 @@ class FakeEngine:
         self.rejected.append((approval_id, rejected_by, now))
 
 
+_stores: list[ApiStore] = []
+
+
+@pytest.fixture(autouse=True)
+def _close_stores():
+    yield
+    while _stores:
+        _stores.pop().close()
+
+
 async def public_resolver(host: str) -> list[str]:
     return ["93.184.216.34"]
 
@@ -96,8 +107,10 @@ def build(tmp_path, *, engine=None, env=None, handler=None, resolver=public_reso
         return (handler or default_handler)(request)
 
     http_client = httpx.AsyncClient(transport=httpx.MockTransport(recording))
+    store = ApiStore(settings.data_dir / "api.sqlite3", clock=lambda: clock().timestamp())
+    _stores.append(store)
     app = create_app(engine, settings, clock=clock, monotonic=clock.monotonic,
-                     http_client=http_client, resolver=resolver)
+                     http_client=http_client, resolver=resolver, store=store)
     client = TestClient(app, base_url="https://quote.test", raise_server_exceptions=False)
     return SimpleNamespace(app=app, client=client, engine=engine, clock=clock, settings=settings,
                            requests=requests, data_dir=settings.data_dir.resolve())
