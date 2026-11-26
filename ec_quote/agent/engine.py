@@ -6,6 +6,7 @@ un om o trimite. Mod autonom (Engine): chatul de pe site, cu predare catre om si
 from __future__ import annotations
 
 import difflib
+import inspect
 import json
 import logging
 import os
@@ -27,7 +28,7 @@ from ec_quote.contracts import (
 )
 
 from . import offer as offer_text
-from .guard import check_text, normalize
+from .guard import check_text, money_mentions, normalize
 from .model import ModelPort, ModelReply, ToolCall
 from .prompts import (
     BUTTON_TITLE_MAX, MAX_BUTTONS, MODE_ASSIST, MODE_AUTONOMOUS, build_system, wrap_customer, wrap_file,
@@ -57,7 +58,17 @@ _WEEKDAYS = ["luni", "marti", "miercuri", "joi", "vineri", "sambata", "duminica"
 
 
 class ApprovalError(Exception):
-    """Aprobarea sau sugestia nu exista, a fost inlocuita, a expirat sau nu poate fi trimisa."""
+    """Aprobarea sau sugestia nu exista, a fost inlocuita, a expirat sau nu poate fi trimisa.
+
+    `code` este stabil, pentru API: `not_found` (nu exista) sau `not_available` (exista, dar nu mai poate fi folosita).
+    """
+
+    NOT_FOUND = "not_found"
+    NOT_AVAILABLE = "not_available"
+
+    def __init__(self, message: str, code: str = NOT_AVAILABLE) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 @dataclass
@@ -85,7 +96,9 @@ class _Turn:
     guard_retries: int = 0
     catalog_terms: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)       # intrarile din baza intoarse in aceasta runda
+    source_amounts: list[Decimal] = field(default_factory=list)  # sumele publicate in acele intrari
     knowledge_misses: list[str] = field(default_factory=list)
+    open_questions: list[str] = field(default_factory=list)  # intrebari deschise pentru proprietar
 
 
 def _fail(message: str) -> _Outcome:
@@ -219,7 +232,7 @@ class QuoteEngine:
                 return record.suggestion  # al doilea clic nu creeaza inca o comanda
             state = self.store.load(record.channel, record.key)
             if state is None:
-                raise ApprovalError("conversatia sugestiei nu mai exista")
+                raise ApprovalError("conversatia sugestiei nu mai exista", ApprovalError.NOT_FOUND)
             quote = record.quotes[0]
             checkout = self.checkout.create_checkout(quote, state.contact, record.artwork_url, record.valid_until)
             if not _same_money(checkout.total, quote.total):
@@ -273,7 +286,7 @@ class QuoteEngine:
     def _linkable(self, suggestion_id: str, now: datetime) -> Suggestion:
         record = self.store.get_suggestion(suggestion_id)
         if record is None:
-            raise ApprovalError(f"sugestie necunoscuta: {suggestion_id}")
+            raise ApprovalError(f"sugestie necunoscuta: {suggestion_id}", ApprovalError.NOT_FOUND)
         if record.status == "superseded":
             raise ApprovalError(f"sugestia {suggestion_id} a fost inlocuita de una mai noua")
         if record.status == "linked":
@@ -376,7 +389,7 @@ class QuoteEngine:
             approval = self._pending_approval(approval_id)
             state = self.store.load(approval.channel, approval.key)
             if state is None:
-                raise ApprovalError("conversatia aprobarii nu mai exista")
+                raise ApprovalError("conversatia aprobarii nu mai exista", ApprovalError.NOT_FOUND)
             if now > to_local(approval.valid_until):
                 raise ApprovalError("oferta a expirat; trebuie refacuta")
             checkout = self.checkout.create_checkout(
@@ -552,7 +565,7 @@ class QuoteEngine:
         if turn.assist.result is None and default is not None:
             turn.assist.result = default
         if turn.assist.result is not None and turn.knowledge_misses and not turn.sources:
-            turn.assist.result.setdefault("gaps", [turn.customer_text or turn.knowledge_misses[0]])
+            turn.assist.result.setdefault("gaps", self._gap_notes(turn))
 
     def _gave_up(self, state: ConversationState, turn: _Turn, now: datetime,
                  problems: list[str]) -> list[OutboundAction]:
@@ -562,8 +575,7 @@ class QuoteEngine:
         return self._misunderstood(state, turn, now, "Asistentul nu a reusit sa formuleze un raspuns valid.")
 
     def _knowledge_gap(self, state: ConversationState, turn: _Turn, now: datetime) -> list[OutboundAction]:
-        question = turn.customer_text or turn.knowledge_misses[0]
-        note = f"Nu avem un răspuns aprobat pentru: {question}"
+        note = f"Nu avem un răspuns aprobat pentru: {self._gap_notes(turn)[0]}"
         return self._handoff(state, HandoffReason.NOT_UNDERSTOOD, note, now, assist=turn.assist, note=note,
                              draft=offer_text.HOLDING_TEXT)
 
@@ -584,17 +596,12 @@ class QuoteEngine:
     def _tool_search_knowledge(self, state: ConversationState, turn: _Turn, args: dict, now: datetime) -> _Outcome:
         query = str(args["query"]).strip()
         subject = str(args.get("product_or_material") or "").strip()
-        entries = []
-        if self.knowledge is not None and query:
-            entries = list(self.knowledge.search(f"{query} {subject}".strip(), limit=5))
-            if subject:
-                wanted = normalize(subject)
-                scoped = [e for e in entries
-                          if not e.applies_to or any(wanted in normalize(a) or normalize(a) in wanted
-                                                     for a in e.applies_to)]
-                entries = scoped or entries
+        entries = self._search_knowledge(query, subject) if self.knowledge is not None and query else []
         if not entries:
             turn.knowledge_misses.append(query)
+            opened = self._open_question(query)
+            if opened and opened not in turn.open_questions:
+                turn.open_questions.append(opened)
             self.store.add_gap(KnowledgeGap(channel=state.channel, key=state.key,
                                             question=turn.customer_text, query=query, at=now))
             return _Outcome(payload={
@@ -603,9 +610,69 @@ class QuoteEngine:
                         "restul cererii (pret, intrebari) fara sa afirmi nimic despre acest subiect."})
         for entry in entries:
             turn.sources.append(f"{entry.question} {entry.answer}")
+            turn.source_amounts += self._published_amounts(entry.id)
         return _Outcome(payload={"entries": [
             {"id": e.id, "topic": e.topic, "question": e.question, "answer": e.answer, "applies_to": e.applies_to}
             for e in entries]})
+
+    def _search_knowledge(self, query: str, subject: str) -> list:
+        """Baza reala stie sa filtreze dupa produs (`applies_to`); o baza simpla primeste produsul in intrebare."""
+        search = self.knowledge.search
+        try:
+            scoped = "applies_to" in inspect.signature(search).parameters
+        except (TypeError, ValueError):
+            scoped = False
+        if scoped:
+            found = list(search(query, limit=5, applies_to=subject)) if subject else []
+            # Numele din catalog nu este mereu cel din baza: fara rezultat, cautam si fara produs.
+            return found or list(search(query, limit=5))
+        entries = list(search(f"{query} {subject}".strip(), limit=5))
+        if subject:
+            wanted = normalize(subject)
+            narrowed = [e for e in entries
+                        if not e.applies_to or any(wanted in normalize(a) or normalize(a) in wanted
+                                                   for a in e.applies_to)]
+            entries = narrowed or entries
+        return entries
+
+    def _open_question(self, query: str) -> str:
+        """Intrebarea deschisa a proprietarului care a blocat raspunsul, daca baza o poate spune."""
+        finder = getattr(self.knowledge, "open_question", None)
+        if not callable(finder):
+            return ""
+        try:
+            entry = finder(query)
+        except Exception:
+            log.exception("open_question a esuat")
+            return ""
+        if entry is None:
+            return ""
+        try:
+            # Formularea pentru proprietar, cand baza o are; altfel intrebarea canonica.
+            asked = getattr(self.knowledge.entry(entry.id), "owner_question", "")
+        except Exception:
+            asked = ""
+        return str(asked or getattr(entry, "question", "") or "")
+
+    def _published_amounts(self, entry_id: str) -> list[Decimal]:
+        """Sumele publicate ale unei intrari (campul de redactare `amounts`), cand baza le expune."""
+        lookup = getattr(self.knowledge, "entry", None)
+        if not callable(lookup):
+            return []
+        try:
+            authored = lookup(entry_id)
+        except Exception:
+            return []
+        found: list[Decimal] = []
+        for amount in getattr(authored, "amounts", None) or []:
+            found += [a for a in money_mentions(str(getattr(amount, "text", amount))) if a is not None]
+        return found
+
+    def _gap_notes(self, turn: _Turn) -> list[str]:
+        question = turn.customer_text or turn.knowledge_misses[0]
+        notes = [question]
+        notes += [f"(întrebare deschisă pentru proprietar: {q})" for q in turn.open_questions]
+        return [" ".join(notes)]
 
     def _tool_get_price(self, state: ConversationState, turn: _Turn, args: dict, now: datetime) -> _Outcome:
         add_ons = {str(item["group"]): str(item["choice"]) for item in args.get("add_ons") or []}
@@ -1010,7 +1077,7 @@ class QuoteEngine:
     def _pending_approval(self, approval_id: str) -> Approval:
         approval = self.store.get_approval(approval_id)
         if approval is None:
-            raise ApprovalError(f"aprobare necunoscuta: {approval_id}")
+            raise ApprovalError(f"aprobare necunoscuta: {approval_id}", ApprovalError.NOT_FOUND)
         if approval.status != "pending":
             raise ApprovalError(f"aprobarea {approval_id} este deja {approval.status}")
         return approval
@@ -1071,7 +1138,7 @@ class QuoteEngine:
     # ================= verificari pe textul modelului =================
 
     def _guard(self, state: ConversationState, turn: _Turn, text: str) -> list[str]:
-        amounts: list[Decimal] = []
+        amounts: list[Decimal] = list(turn.source_amounts)
         percents: list[Decimal] = [self.rules.vat_percent, *_catalog_percents(turn.catalog)]
         for quote in state.quotes.values():
             amounts += [quote.total, quote.total_ex_vat, quote.unit_price]
