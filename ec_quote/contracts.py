@@ -253,3 +253,23 @@ class AssistEngine(Protocol):
     def create_payment_link(self, suggestion_id: str, staff: str, now: datetime,
                             edited_text: str | None = None) -> AssistSuggestion:
         """Omul accepta oferta: creeaza Draft Order si intoarce textul final cu linkul de plata."""
+
+
+# ---------- baza de cunostinte (intrebari despre materiale, livrare, plata, fisiere...) ----------
+# Raspunsurile vin numai din intrari aprobate. Ce nu e in baza nu se afirma: merge la om.
+
+class KnowledgeEntry(BaseModel):
+    id: str
+    topic: str                      # materiale, rezistenta, livrare, plata, fisiere, comanda, mostre...
+    question: str                   # intrebarea canonica
+    answer: str                     # raspunsul aprobat, in romana, gata de adaptat ca ton
+    applies_to: list[str] = Field(default_factory=list)   # produse / materiale; gol = general
+    source: str = ""                # de unde vine (pagina, document), pentru verificare
+    status: Literal["verified", "needs_owner"] = "needs_owner"
+
+
+class KnowledgePort(Protocol):
+    def search(self, query: str, limit: int = 5) -> list[KnowledgeEntry]:
+        """Doar intrarile `verified`. Lista goala inseamna: nu stim, intreaba un om."""
+
+    def topics(self) -> list[str]: ...
