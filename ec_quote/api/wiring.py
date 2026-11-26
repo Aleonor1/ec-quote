@@ -6,6 +6,7 @@ nici retea, nici SDK-uri. Fiecare fabrica primeste Settings si intoarce un port.
 from __future__ import annotations
 
 import importlib
+import os
 from collections.abc import Callable
 from datetime import datetime
 
@@ -76,6 +77,12 @@ def build_crm(settings: Settings) -> CrmPort | HandoffPort:
     return module.CrmClient(settings.crm_base_url, settings.crm_api_secret.get_secret_value(), _http())
 
 
+def build_knowledge(settings: Settings):
+    """Baza de cunostinte aprobata. Continut invalid opreste pornirea (fail closed)."""
+    module = importlib.import_module("ec_quote.knowledge")
+    return module.KnowledgeBase.from_dir(os.environ.get("EC_QUOTE_KNOWLEDGE_DIR") or None)
+
+
 def build_engine(settings: Settings, clock: Callable[[], datetime] | None = None) -> Engine:
     """Motorul de productie. Obiectul intors implementeaza si AssistEngine cand modulul agent il are."""
     agent = importlib.import_module("ec_quote.agent")
@@ -86,6 +93,7 @@ def build_engine(settings: Settings, clock: Callable[[], datetime] | None = None
         client=anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value()),
         model=settings.model or None)
     return agent.build_engine(
+        knowledge=build_knowledge(settings),
         pricing=build_pricing(settings), files=build_files(settings), mockup=build_mockup(settings),
         checkout=build_checkout(settings), crm=crm, handoff=crm, model=model,
         rules=agent.Rules.load(settings.rules_path), data_dir=settings.data_dir)

@@ -12,6 +12,7 @@ COPY pyproject.toml README.md ./
 COPY ec_quote ./ec_quote
 COPY config ./config
 COPY templates ./templates
+COPY knowledge ./knowledge
 
 # Instalare editabila: fisierele statice si config/ raman langa cod.
 # Verificarea fusului orar opreste constructia daca imaginea nu are datele de fus orar.
