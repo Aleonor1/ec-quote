@@ -11,8 +11,8 @@
   "follow_up_hours": [24, 72],
   "max_offers_per_contact_per_day": 5,
   "business_hours": {"start": "09:00", "end": "18:00", "days": [1, 2, 3, 4, 5]},
-  "min_dpi_ok": 300,
-  "min_dpi_weak": 150,
+  "min_dpi_ok": 150,
+  "min_dpi_weak": 100,
   "approved_material_claims": [
     "rezistenta la umezeala si ulei",
     "lac UV mat",

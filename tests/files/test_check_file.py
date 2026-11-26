@@ -83,7 +83,7 @@ def test_implements_file_port_and_module_function(tmp_path):
     assert isinstance(port.check_file(path, D("10"), D("10")), FileReport)
     report = check_file(path, D("10"), D("10"))
     assert report.dpi_at_size == D("304.8")
-    assert load_rules()["min_dpi_ok"] == 300
+    assert load_rules()["min_dpi_ok"] == 150
 
 
 def test_thresholds_come_from_rules(tmp_path):
@@ -444,7 +444,7 @@ def test_describe_problems_order_dedup_unknown_and_default_rules():
     texts = describe_problems(report)
     assert len(texts) == 2
     assert texts[0].startswith("Fișierul are mai multe pagini")
-    assert "DPI la dimensiunea" not in texts[1] and "minimum 300 DPI" in texts[1]
+    assert "DPI la dimensiunea" not in texts[1] and "minimum 150 DPI" in texts[1]
     assert describe_problems(FileReport(kind="vector", mime="image/svg+xml", verdict=FileVerdict.OK)) == []
 
 
