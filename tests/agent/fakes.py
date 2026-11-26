@@ -1,14 +1,14 @@
 """Porturi false, in memorie, pentru testele motorului. Fara retea, fara module vecine."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from ec_quote.agent import InMemoryStore, ModelReply, QuoteEngine, Rules, ToolCall
 from ec_quote.contracts import (
-    Attachment, Checkout, Contact, FileReport, FileVerdict, InboundMessage, LineProperty, MockupResult,
-    PriceQuote, TierOffer, Unpriced,
+    AssistMessage, Attachment, Checkout, Contact, FileReport, FileVerdict, InboundMessage, KnowledgeEntry,
+    LineProperty, MockupResult, PriceQuote, TierOffer, Unpriced,
 )
 
 TZ = ZoneInfo("Europe/Bucharest")
@@ -41,6 +41,14 @@ CATALOG = {
         "materials": [{"name": "Vinyl alb", "pricingTableId": "t1"}, {"name": "Hârtie", "pricingTableId": "t2"}],
         "customSize": {"enabled": True, "minCm": 2, "maxCm": 100},
         "addOnGroups": [{"name": "Finisaj", "choices": [{"name": "Lucios", "modifierPercent": 0}]}],
+        "options": {"adhesive": True, "whitePrint": True, "cut": True, "urgency": True},
+        "quantity": {"min": 25, "max": 10000, "tiers": [{"quantity": 500, "discountPercent": 10}]},
+    }, {
+        "id": "gid://shopify/Product/2",
+        "title": "Stickere decupate",
+        "handle": "stickere-decupate",
+        "shapes": ["Contur"],
+        "materials": [{"name": "Vinyl alb", "pricingTableId": "t1"}],
     }],
 }
 
@@ -56,6 +64,8 @@ class FakePricing:
     def __init__(self, unit_ex_vat: str = "0.50") -> None:
         self.unit = Decimal(unit_ex_vat)
         self.unpriced: Unpriced | None = None
+        self.min_quantity = 0
+        self.promo_percent = 0
         self.price_calls: list = []
         self.tier_calls: list = []
         self.fail_catalog = False
@@ -73,9 +83,17 @@ class FakePricing:
         self.price_calls.append(choices)
         if self.unpriced is not None:
             return self.unpriced
+        if choices.quantity < self.min_quantity:
+            return Unpriced(reason="quantity_below_minimum", details={"minQuantity": self.min_quantity})
         ex_vat, total = self._totals(choices.quantity)
-        return PriceQuote(choices=choices, total=total, total_ex_vat=ex_vat, unit_price=self.unit,
-                          discount_percent=Decimal("10"), breakdown={}, properties=[LineProperty(name="a", value="b")])
+        if choices.urgent:
+            ex_vat, total = ex_vat + Decimal("125.00"), total + Decimal("151.25")
+        if choices.adhesive == "strong":
+            ex_vat, total = ex_vat + Decimal("20.00"), total + Decimal("24.20")
+        unit = (total / choices.quantity).quantize(Decimal("0.01"))
+        return PriceQuote(choices=choices, total=total, total_ex_vat=ex_vat, unit_price=unit,
+                          discount_percent=Decimal("10"), breakdown={"promoPercent": self.promo_percent},
+                          properties=[LineProperty(name="a", value="b")])
 
     def get_price_tiers(self, choices, count):
         self.tier_calls.append((choices, count))
@@ -83,7 +101,8 @@ class FakePricing:
         for step in range(1, count + 1):
             quantity = choices.quantity * (step + 1)
             ex_vat, total = self._totals(quantity)
-            tiers.append(TierOffer(quantity=quantity, total=total, total_ex_vat=ex_vat, unit_price=self.unit))
+            unit = (total / quantity).quantize(Decimal("0.01"))
+            tiers.append(TierOffer(quantity=quantity, total=total, total_ex_vat=ex_vat, unit_price=unit))
         return tiers
 
 
@@ -149,6 +168,37 @@ class FakeCrm:
         return [c["status"] for c in self.calls]
 
 
+class FakeKnowledge:
+    """Baza de cunostinte falsa: cauta dupa cuvinte in intrebare si raspuns."""
+
+    def __init__(self, *entries: KnowledgeEntry) -> None:
+        self.entries = list(entries)
+        self.queries: list[str] = []
+
+    def search(self, query, limit=5):
+        from ec_quote.agent.guard import normalize
+        self.queries.append(query)
+        words = [w for w in normalize(query).split(" ") if len(w) > 3]
+        hits = [e for e in self.entries if e.status == "verified"
+                and any(w in normalize(f"{e.question} {e.answer} {e.topic}") for w in words)]
+        return hits[:limit]
+
+    def topics(self):
+        return sorted({e.topic for e in self.entries})
+
+
+KNOWLEDGE = [
+    KnowledgeEntry(id="k1", topic="rezistenta", question="Rezista etichetele la apa?",
+                   answer="Etichetele din vinyl rezistă la apă și la umezeală. Cele din hârtie nu sunt potrivite "
+                          "pentru medii umede.", applies_to=["Vinyl alb"], status="verified"),
+    KnowledgeEntry(id="k2", topic="livrare", question="Cat dureaza livrarea?",
+                   answer="Livrarea se face prin curier, în 1-2 zile lucrătoare de la expediere. Transportul costă "
+                          "20 lei și este gratuit la comenzi peste 300 lei.", status="verified"),
+    KnowledgeEntry(id="k3", topic="rezistenta", question="Rezista la congelator?",
+                   answer="Nu avem inca un raspuns verificat.", status="needs_owner"),
+]
+
+
 class FakeHandoff:
     def __init__(self) -> None:
         self.calls: list = []
@@ -210,12 +260,15 @@ class Harness:
         self.checkout = FakeCheckout()
         self.crm = FakeCrm()
         self.handoff = FakeHandoff()
+        self.knowledge = FakeKnowledge(*KNOWLEDGE)
+        self.transcript: list[AssistMessage] = []
         self.store = store or InMemoryStore()
         self.rules = make_rules(**rule_overrides)
         ids = iter(f"ap{i}" for i in range(1, 1000))
         self.engine = QuoteEngine(
             model=self.model, pricing=self.pricing, files=self.files, mockup=self.mockup, checkout=self.checkout,
-            crm=self.crm, handoff=self.handoff, store=self.store, rules=self.rules, data_dir=tmp_path,
+            crm=self.crm, handoff=self.handoff, knowledge=self.knowledge, store=self.store, rules=self.rules,
+            data_dir=tmp_path,
             id_factory=lambda: next(ids))
 
     def state(self, key: str = "40700000001"):
@@ -228,3 +281,26 @@ class Harness:
         message = InboundMessage(contact=Contact(channel="whatsapp", key=key, phone=f"+{key}"), text=text,
                                  button_id=button_id, attachments=attachments, received_at=at, from_staff=staff)
         return self.engine.handle(message, message_id=message_id)
+
+    # ---------- mod asistat ----------
+
+    def contact(self, key: str = "40700000001") -> Contact:
+        return Contact(channel="whatsapp", key=key, phone=f"+{key}")
+
+    def say(self, direction: str, text: str = "", *, at: datetime | None = None, mime: str | None = None,
+            filename: str = "logo.png") -> AssistMessage:
+        """Adauga un mesaj in conversatia vizibila (fara sa ceara inca o sugestie)."""
+        stamp = at or THURSDAY_10 + timedelta(minutes=len(self.transcript))
+        attachments = [Attachment(path=f"/tmp/in/{filename}", mime=mime, filename=filename,
+                                  public_url=f"https://cdn.example/{filename}")] if mime else []
+        message = AssistMessage(id=f"wa{len(self.transcript) + 1}", direction=direction, text=text, sent_at=stamp,
+                                attachments=attachments)
+        self.transcript.append(message)
+        return message
+
+    def suggest(self, text: str | None = None, *, now: datetime | None = None, **kwargs):
+        """Clientul scrie (optional) si extensia cere sugestia pentru toata conversatia vizibila."""
+        if text is not None or kwargs:
+            self.say("in", text or "", **kwargs)
+        moment = now or (self.transcript[-1].sent_at if self.transcript else THURSDAY_10)
+        return self.engine.suggest(self.contact(), list(self.transcript), moment)

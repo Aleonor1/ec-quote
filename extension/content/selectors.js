@@ -234,7 +234,7 @@
     const marker = all(node, 'document').find((el) => !inside(el));
     if (marker) {
       const nameEl = first(node, 'documentName');
-      const name = cleanText(marker.getAttribute('title') || '').replace(/^(Descarcă|Download)\s*/i, '').replace(/^"|"$/g, '')
+      const name = cleanText(marker.getAttribute('title') || '').replace(/^(Descarcă|Download)\s*/i, '').replace(/^["„“”]|["„“”]$/g, '')
         || (nameEl && !inside(nameEl) ? textOf(nameEl) : '');
       const link = first(node, 'documentBlob');
       return { type: 'document', name: name.slice(0, 200), src: link ? link.href : null, el: link };

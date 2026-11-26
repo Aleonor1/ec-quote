@@ -81,7 +81,7 @@ def test_guard_rules():
 
 def test_system_prompt_takes_numbers_from_rules():
     prompt = build_system_prompt(make_rules(max_clarifying_questions=4))
-    assert "cel mult 4 întrebări" in prompt and "„lac UV mat\"" in prompt
+    assert "depășești 4 întrebări" in prompt and "„lac UV mat\"" in prompt
     assert chr(0x2014) not in prompt and chr(0x2013) not in prompt
 
 

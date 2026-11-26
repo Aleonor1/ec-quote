@@ -200,7 +200,7 @@ def test_value_threshold_handoff_cannot_be_bypassed_by_model(tmp_path):
     assert actions[0].handoff_reason == HandoffReason.VALUE_OVER_THRESHOLD
     assert "lei" not in actions[0].text.lower()
     assert h.handoff.calls[0][1] == HandoffReason.VALUE_OVER_THRESHOLD
-    assert "5000.00" in h.handoff.calls[0][2]
+    assert "5.000,00 lei" in h.handoff.calls[0][2]
     assert h.checkout.calls == [] and h.mockup.offer_images == []
     assert h.state().status == "manual" and h.state().quotes == {}
     assert len(h.model.calls) == 1  # modelul nu a mai apucat sa ceara oferta
@@ -221,7 +221,8 @@ def test_unpriced_reason_is_fed_back_and_model_hands_off(tmp_path):
     actions = h.send("etichete rotunde de 500 cm")
 
     result = json.loads(h.model.calls[1]["messages"][-1]["content"][0]["content"])
-    assert result == {"status": "unpriced", "reason": "size_out_of_range", "details": {"maxCm": 100}}
+    assert (result["status"], result["reason"], result["details"]) == ("unpriced", "size_out_of_range", {"maxCm": 100})
+    assert result["hint"]
     assert actions[0].handoff_reason == HandoffReason.NOT_IN_CALCULATOR
     assert h.handoff.calls[0][2] == "dimensiune peste maxim"
 
@@ -368,7 +369,7 @@ def test_price_hallucination_in_model_text_is_blocked_and_regenerated(tmp_path):
     actions = h.send(REQUEST)
     assert [a.text for a in actions] == ["Vă pregătesc imediat oferta exactă."]
     note = h.model.calls[1]["messages"][-1]["content"][0]["text"]
-    assert "nu a fost trimis" in note and "nu provine din get_price" in note
+    assert "nu a fost trimis" in note and "nu provine din calculator" in note
 
 
 def test_persistent_hallucination_never_reaches_customer(tmp_path):
@@ -486,7 +487,7 @@ def test_technical_failures_end_in_handoff_not_in_silence(tmp_path):
 
 
 def test_step_limit_counts_as_misunderstanding(tmp_path):
-    h = Harness(tmp_path, *[call("find_products", query="x") for _ in range(8)])
+    h = Harness(tmp_path, *[call("find_products", query="x") for _ in range(10)])
     actions = h.send("etichete")
     assert kinds(actions) == ["text"] and h.state().misunderstandings == 1
 

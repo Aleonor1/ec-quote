@@ -1,6 +1,11 @@
-"""Motorul de conversatie: bucla manuala de unelte, regulile de predare decise in cod, modul umbra."""
+"""Motorul: bucla manuala de unelte, verificarile decise in cod, modul asistat si modul autonom.
+
+Mod asistat (AssistEngine): extensia trimite conversatia vizibila, motorul intoarce o sugestie;
+un om o trimite. Mod autonom (Engine): chatul de pe site, cu predare catre om si mod umbra.
+"""
 from __future__ import annotations
 
+import difflib
 import json
 import logging
 import os
@@ -16,16 +21,21 @@ from typing import Callable
 from pydantic import ValidationError
 
 from ec_quote.contracts import (
-    Button, CheckoutPort, Contact, CrmPort, FilePort, FileVerdict, HandoffPort, HandoffReason,
-    InboundMessage, LineChoices, MockupPort, OutboundAction, PriceQuote, PricingPort, Unpriced,
+    AssistMessage, AssistSuggestion, Attachment, Button, CheckoutPort, Contact, CrmPort, FilePort, FileVerdict,
+    HandoffPort, HandoffReason, InboundMessage, KnowledgePort, LineChoices, MockupPort, OfferLine,
+    OutboundAction, PriceQuote, PricingPort, Unpriced,
 )
 
 from . import offer as offer_text
 from .guard import check_text, normalize
 from .model import ModelPort, ModelReply, ToolCall
-from .prompts import BUTTON_TITLE_MAX, MAX_BUTTONS, build_system, wrap_customer, wrap_file
+from .prompts import (
+    BUTTON_TITLE_MAX, MAX_BUTTONS, MODE_ASSIST, MODE_AUTONOMOUS, build_system, wrap_customer, wrap_file,
+)
 from .rules import Rules, to_local
-from .store import Approval, ConversationState, ConversationStore, InMemoryStore, LoggedMessage
+from .store import (
+    Approval, ConversationState, ConversationStore, InMemoryStore, KnowledgeGap, LoggedMessage, Suggestion,
+)
 from .tools import MODEL_HANDOFF_REASONS, TOOLS
 
 log = logging.getLogger("ec_quote.agent")
@@ -34,14 +44,20 @@ _HUMAN_REQUEST = re.compile(
     r"(vorb\w*|discut\w*|legatura|contact\w*)\b.{0,30}\b"
     r"(un om|o persoana|cineva|un coleg|un operator|un consultant|un reprezentant|un angajat)\b"
     r"|\b(operator uman|om real|persoana reala|agent uman)\b")
+_BOT_QUESTION = re.compile(
+    r"\b(robot|bot|chatbot|inteligenta artificiala|chatgpt)\b.{0,40}\?"
+    r"|\b(esti|sunteti|vorbesc cu)\b.{0,25}\b(un om|om real|robot|bot)\b")
+_UNSUPPORTED_MIME = ("audio/", "video/")
 _TRANSCRIPT_LIMIT = 30
-_KEPT_QUOTES = 10
+_KEPT_QUOTES = 12
+_KEPT_SEEN = 2000
 _MAX_GUARD_RETRIES = 2
+_EDITED_RATIO = 0.6
 _WEEKDAYS = ["luni", "marti", "miercuri", "joi", "vineri", "sambata", "duminica"]
 
 
 class ApprovalError(Exception):
-    """Aprobarea nu exista, nu mai este in asteptare sau nu poate fi trimisa."""
+    """Aprobarea sau sugestia nu exista, a fost inlocuita, a expirat sau nu poate fi trimisa."""
 
 
 @dataclass
@@ -54,11 +70,22 @@ class _Outcome:
 
 
 @dataclass
+class _Assist:
+    """Colecteaza sugestia rundei in modul asistat."""
+
+    result: dict | None = None
+
+
+@dataclass
 class _Turn:
     catalog: dict
+    assist: _Assist | None = None
+    customer_text: str = ""
     question_rejections: int = 0
     guard_retries: int = 0
     catalog_terms: list[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)       # intrarile din baza intoarse in aceasta runda
+    knowledge_misses: list[str] = field(default_factory=list)
 
 
 def _fail(message: str) -> _Outcome:
@@ -69,14 +96,19 @@ def _decimal(value: object) -> Decimal:
     return Decimal(str(value))
 
 
+def _same_money(left: Decimal, right: Decimal) -> bool:
+    return left.quantize(Decimal("0.01")) == right.quantize(Decimal("0.01"))
+
+
 class QuoteEngine:
-    """Implementeaza contracts.Engine. Toate dependintele sunt porturi injectate."""
+    """Implementeaza contracts.AssistEngine si contracts.Engine. Toate dependintele sunt porturi injectate."""
 
     def __init__(
         self, *, model: ModelPort, pricing: PricingPort, files: FilePort, mockup: MockupPort,
         checkout: CheckoutPort, crm: CrmPort, handoff: HandoffPort,
+        knowledge: KnowledgePort | None = None,
         store: ConversationStore | None = None, rules: Rules | None = None,
-        data_dir: str | os.PathLike | None = None, max_model_steps: int = 8,
+        data_dir: str | os.PathLike | None = None, max_model_steps: int = 10,
         id_factory: Callable[[], str] | None = None,
     ) -> None:
         self.model = model
@@ -86,6 +118,7 @@ class QuoteEngine:
         self.checkout = checkout
         self.crm = crm
         self.handoff_port = handoff
+        self.knowledge = knowledge
         self.store = store or InMemoryStore()
         self.rules = rules or Rules.load()
         self.data_dir = Path(data_dir or os.environ.get("EC_QUOTE_DATA_DIR") or "./data")
@@ -94,13 +127,192 @@ class QuoteEngine:
         self._locks: dict[tuple[str, str], threading.Lock] = {}
         self._locks_guard = threading.Lock()
 
-    # ---------- API public ----------
+    # ================= mod asistat =================
+
+    def suggest(self, contact: Contact, messages: list[AssistMessage], now: datetime) -> AssistSuggestion:
+        now = to_local(now)
+        with self._lock(contact.channel, contact.key):
+            state = self.store.load(contact.channel, contact.key)
+            is_new = state is None
+            if state is None:
+                state = ConversationState(channel=contact.channel, key=contact.key, contact=contact)
+            else:
+                state.contact = _merge_contact(state.contact, contact)
+            previous = self.store.get_suggestion(state.last_suggestion_id) if state.last_suggestion_id else None
+
+            ordered = _ordered(messages)
+            seen = set(state.assist_seen)
+            fresh = [m for m in ordered if m.id not in seen]
+            for message in fresh:
+                at = to_local(message.sent_at) if message.sent_at else now
+                self.store.append_message(state.channel, state.key, LoggedMessage(
+                    direction="in" if message.direction == "in" else "staff", text=message.text, at=at,
+                    meta={"id": message.id, "attachments": [_file_name(a) for a in message.attachments]}))
+                state.assist_seen.append(message.id)
+                if message.direction == "in":
+                    state.first_inbound_at = state.first_inbound_at or at
+                    self._take_design(state, message.attachments)
+                elif previous is not None and previous.outcome is None and previous.suggestion.text:
+                    # Primul mesaj al omului dupa sugestie spune cat de utila a fost.
+                    previous.outcome = _match_outcome(previous.suggestion.text, message.text)
+                    self.store.save_suggestion(previous)
+            state.assist_seen = state.assist_seen[-_KEPT_SEEN:]
+            if fresh:
+                state.last_message_at = now
+            if state.status in ("manual", "closed", "offer_pending_approval"):
+                state.status = "collecting"  # in modul asistat nu exista tacere
+
+            last = ordered[-1] if ordered else None
+            fresh_in = [m for m in fresh if m.direction == "in"]
+            if last is None or last.direction == "out":
+                self.store.save(state)
+                return self._none_suggestion()
+            if not fresh_in and self._still_valid(previous, last.id, now):
+                self.store.save(state)
+                return previous.suggestion
+
+            if is_new:
+                state.summary = last.text[:200]
+                self._crm(state, "new")
+            assist = _Assist()
+            text = " ".join(m.text for m in fresh_in) or last.text
+            plain = normalize(text)
+            if not last.text.strip() and last.attachments and all(_unsupported(a) for a in last.attachments):
+                voice = any(a.mime.startswith("audio/") for a in last.attachments)
+                assist.result = {
+                    "kind": "question",
+                    "text": offer_text.VOICE_TEXT if voice else offer_text.UNSUPPORTED_FILE_TEXT,
+                    "note_for_staff": ("Clientul a trimis un mesaj vocal; asistentul nu îl poate asculta."
+                                       if voice else "Clientul a trimis un fișier care nu poate fi folosit ca grafică.")}
+            elif _HUMAN_REQUEST.search(plain):
+                self._handoff(state, HandoffReason.CUSTOMER_ASKED, "", now, assist=assist,
+                              note="Clientul a cerut explicit să vorbească cu un om.")
+            elif _BOT_QUESTION.search(plain):
+                self._handoff(state, HandoffReason.CUSTOMER_ASKED, "", now, assist=assist,
+                              note="Clientul întreabă dacă vorbește cu un robot. Răspunsul îl dă omul, în nume propriu.")
+            else:
+                inbound = InboundMessage(contact=state.contact, message_id=last.id, text=last.text,
+                                         attachments=last.attachments, received_at=now)
+                actions = self._run_model(state, inbound, now, assist=assist, current_id=last.id)
+                if assist.result is None:
+                    assist.result = ({"kind": "reply", "text": actions[0].text} if actions
+                                     else {"kind": "none", "note_for_staff": "Nu este nevoie de răspuns."})
+
+            suggestion, record = self._record_suggestion(state, assist.result, last, now)
+            if previous is not None and previous.status == "pending":
+                previous.status = "superseded"
+                self.store.save_suggestion(previous)
+            self.store.save_suggestion(record)
+            state.last_suggestion_id = record.id
+            state.first_reply_at = state.first_reply_at or now
+            self.store.save(state)
+            return suggestion
+
+    def create_payment_link(self, suggestion_id: str, staff: str, now: datetime,
+                            edited_text: str | None = None) -> AssistSuggestion:
+        """Omul accepta oferta: abia acum se creeaza Draft Order."""
+        now = to_local(now)
+        record = self._linkable(suggestion_id, now)
+        with self._lock(record.channel, record.key):
+            record = self._linkable(suggestion_id, now)
+            if record.status == "linked":
+                return record.suggestion  # al doilea clic nu creeaza inca o comanda
+            state = self.store.load(record.channel, record.key)
+            if state is None:
+                raise ApprovalError("conversatia sugestiei nu mai exista")
+            quote = record.quotes[0]
+            checkout = self.checkout.create_checkout(quote, state.contact, record.artwork_url, record.valid_until)
+            if not _same_money(checkout.total, quote.total):
+                raise ApprovalError("totalul din checkout difera de pretul calculatorului")
+
+            base = (edited_text if edited_text is not None else record.suggestion.text or record.offer_text).strip()
+            record.suggestion = record.suggestion.model_copy(update={
+                "text": offer_text.with_payment_link(base, quote, checkout.invoice_url, signature=False,
+                                                     language=record.language),
+                "payment_url": checkout.invoice_url, "can_create_payment_link": False})
+            record.status = "linked"
+            record.linked_by = staff
+            record.linked_at = now
+            self.store.save_suggestion(record)
+            for quote_id, known in state.quotes.items():
+                if known == quote:
+                    state.payment_links[quote_id] = checkout.invoice_url
+            state.status = "offer_sent"
+            self._crm(state, "offer_sent", quote=quote, checkout=checkout)
+            self.store.save(state)
+            return record.suggestion
+
+    def assist_metrics(self, channel: str, key: str) -> dict:
+        """Cat de utile au fost sugestiile: timp pana la sugestie si ce a trimis omul fata de text."""
+        records = self.store.list_suggestions(channel, key)
+        latencies = [r.latency_s for r in records if r.latency_s is not None]
+        outcomes = {name: sum(1 for r in records if r.outcome == name) for name in ("exact", "edited", "ignored")}
+        return {
+            "suggestions": len(records),
+            **outcomes,
+            "unanswered": sum(1 for r in records if r.outcome is None),
+            "links_created": sum(1 for r in records if r.status == "linked"),
+            "avg_latency_s": sum(latencies) / len(latencies) if latencies else None,
+            "items": [{"id": r.id, "kind": r.suggestion.kind, "created_at": r.created_at, "latency_s": r.latency_s,
+                       "outcome": r.outcome, "status": r.status} for r in records],
+        }
+
+    def knowledge_gaps(self, since: datetime | None = None) -> list[KnowledgeGap]:
+        """Intrebarile fara raspuns aprobat, ca proprietarul sa stie ce sa adauge in baza."""
+        return self.store.list_gaps(to_local(since) if since else None)
+
+    def _none_suggestion(self) -> AssistSuggestion:
+        return AssistSuggestion(suggestion_id=self._new_id(), kind="none")
+
+    @staticmethod
+    def _still_valid(previous: Suggestion | None, last_id: str, now: datetime) -> bool:
+        if previous is None or previous.status == "superseded" or previous.basis_message_id != last_id:
+            return False
+        return previous.valid_until is None or now <= to_local(previous.valid_until)
+
+    def _linkable(self, suggestion_id: str, now: datetime) -> Suggestion:
+        record = self.store.get_suggestion(suggestion_id)
+        if record is None:
+            raise ApprovalError(f"sugestie necunoscuta: {suggestion_id}")
+        if record.status == "superseded":
+            raise ApprovalError(f"sugestia {suggestion_id} a fost inlocuita de una mai noua")
+        if record.status == "linked":
+            return record
+        if not record.suggestion.can_create_payment_link or len(record.quotes) != 1:
+            raise ApprovalError(f"sugestia {suggestion_id} nu are o oferta pentru care se poate crea link")
+        if record.valid_until is not None and now > to_local(record.valid_until):
+            raise ApprovalError("oferta a expirat; trebuie refacuta")
+        return record
+
+    def _record_suggestion(self, state: ConversationState, result: dict, last: AssistMessage,
+                           now: datetime) -> tuple[AssistSuggestion, Suggestion]:
+        result = dict(result)
+        quotes = result.pop("quotes", [])
+        valid_until = result.pop("valid_until", None)
+        artwork_url = result.pop("artwork_url", None)
+        full_offer = result.pop("offer_text", "")
+        language = result.pop("language", "ro")
+        notes = [result.get("note_for_staff", "")]
+        if result.get("kind") != "none":
+            notes.append(offer_text.file_staff_note(state.file_report))
+        notes += [f"Nu avem un răspuns aprobat pentru: {q}" for q in result.pop("gaps", [])]
+        result["note_for_staff"] = " ".join(n for n in notes if n)
+        suggestion = AssistSuggestion(suggestion_id=self._new_id(), **result)
+        sent_at = to_local(last.sent_at) if last.sent_at else now
+        record = Suggestion(
+            id=suggestion.suggestion_id, channel=state.channel, key=state.key, created_at=now,
+            basis_message_id=last.id, suggestion=suggestion, quotes=quotes, offer_text=full_offer,
+            language=language, valid_until=valid_until, artwork_url=artwork_url,
+            latency_s=max((now - sent_at).total_seconds(), 0.0))
+        return suggestion, record
+
+    # ================= mod autonom (chatul de pe site) =================
 
     def handle(self, message: InboundMessage, message_id: str | None = None) -> list[OutboundAction]:
         contact = message.contact
         now = to_local(message.received_at)
         with self._lock(contact.channel, contact.key):
-            inbound_id = message_id or getattr(message, "message_id", None)
+            inbound_id = message_id or message.message_id
             if inbound_id and not self.store.claim_inbound(contact.channel, contact.key, str(inbound_id)):
                 return []  # acelasi mesaj, livrat a doua oara
 
@@ -114,8 +326,7 @@ class QuoteEngine:
             state.last_message_at = now
             self.store.append_message(contact.channel, contact.key, LoggedMessage(
                 direction="staff" if message.from_staff else "in", text=message.text, at=now,
-                meta={"button_id": message.button_id,
-                      "attachments": [a.filename or Path(a.path).name for a in message.attachments]}))
+                meta={"button_id": message.button_id, "attachments": [_file_name(a) for a in message.attachments]}))
 
             if message.from_staff:
                 # Un om a raspuns din aplicatie: motorul tace.
@@ -137,15 +348,16 @@ class QuoteEngine:
             elif state.status == "closed":
                 self._reset_for_new_request(state)
 
-            if message.attachments:
-                state.design = message.attachments[-1]
-                state.file_report = None
-                state.mockup_path = None
+            self._take_design(state, message.attachments)
             if is_new:
                 state.summary = message.text[:200]
                 self._crm(state, "new")
 
-            if _HUMAN_REQUEST.search(normalize(message.text)):
+            if not message.text.strip() and message.attachments and all(_unsupported(a) for a in message.attachments):
+                voice = any(a.mime.startswith("audio/") for a in message.attachments)
+                actions = [OutboundAction(
+                    kind="text", text=offer_text.VOICE_TEXT if voice else offer_text.UNSUPPORTED_FILE_TEXT)]
+            elif _HUMAN_REQUEST.search(normalize(message.text)):
                 actions = self._handoff(state, HandoffReason.CUSTOMER_ASKED,
                                         "Clientul a cerut explicit sa vorbeasca cu un om.", now)
             else:
@@ -169,7 +381,7 @@ class QuoteEngine:
                 raise ApprovalError("oferta a expirat; trebuie refacuta")
             checkout = self.checkout.create_checkout(
                 approval.quote, state.contact, approval.artwork_url, approval.valid_until)
-            if checkout.total.quantize(Decimal("0.01")) != approval.quote.total.quantize(Decimal("0.01")):
+            if not _same_money(checkout.total, approval.quote.total):
                 raise ApprovalError("totalul din checkout difera de pretul calculatorului")
 
             base = approval.offer_text
@@ -211,8 +423,7 @@ class QuoteEngine:
             state.manual_since = now
             state.last_message_at = now
             try:
-                # Contractul nu are un motiv dedicat pentru oferta respinsa.
-                self.handoff_port.handoff(state.contact, HandoffReason.SPECIAL_TERMS,
+                self.handoff_port.handoff(state.contact, HandoffReason.OFFER_REJECTED,
                                           f"Oferta respinsa de {rejected_by}. {approval.summary}".strip(), now)
             except Exception:
                 log.exception("handoff esuat la respingerea ofertei %s", approval_id)
@@ -259,19 +470,22 @@ class QuoteEngine:
             "human_changed": approval.human_changed if approval else None,
         }
 
-    # ---------- bucla modelului ----------
+    # ================= bucla modelului =================
 
-    def _run_model(self, state: ConversationState, message: InboundMessage, now: datetime) -> list[OutboundAction]:
+    def _run_model(self, state: ConversationState, message: InboundMessage, now: datetime,
+                   assist: _Assist | None = None, current_id: str | None = None) -> list[OutboundAction]:
         try:
             catalog = self.pricing.catalog()
         except Exception:
             log.exception("catalogul calculatorului nu a putut fi citit")
             return self._handoff(state, HandoffReason.NOT_UNDERSTOOD,
-                                 "Eroare tehnica: catalogul calculatorului este indisponibil.", now)
-        turn = _Turn(catalog=catalog, catalog_terms=_catalog_terms(catalog))
+                                 "Eroare tehnică: catalogul calculatorului este indisponibil.", now, assist=assist)
+        turn = _Turn(catalog=catalog, assist=assist, customer_text=message.text,
+                     catalog_terms=_catalog_terms(catalog))
         system = build_system(self.rules, catalog)
-        messages: list[dict] = [
-            {"role": "user", "content": [{"type": "text", "text": self._render_turn(state, message, now)}]}]
+        messages: list[dict] = [{"role": "user", "content": [
+            {"type": "text", "text": self._render_turn(state, message, now, assist is not None, current_id)}]}]
+        problems: list[str] = []
 
         for _ in range(self.max_model_steps):
             try:
@@ -279,7 +493,7 @@ class QuoteEngine:
             except Exception:
                 log.exception("apelul catre model a esuat")
                 return self._handoff(state, HandoffReason.NOT_UNDERSTOOD,
-                                     "Eroare tehnica: modelul nu a raspuns.", now)
+                                     "Eroare tehnică: modelul nu a răspuns.", now, assist=assist)
             if reply.stop_reason in ("refusal", "max_tokens"):
                 break
             messages.append({"role": "assistant", "content": _assistant_content(reply)})
@@ -289,6 +503,7 @@ class QuoteEngine:
                 for call in reply.tool_calls:
                     outcome = self._dispatch(state, turn, call, now)
                     if outcome.actions is not None:
+                        self._attach_gaps(turn)
                         return outcome.actions
                     result = {"type": "tool_result", "tool_use_id": call.id,
                               "content": json.dumps(outcome.payload, ensure_ascii=False, default=str)}
@@ -303,13 +518,17 @@ class QuoteEngine:
             problems = self._guard(state, turn, text) if text else [
                 "Raspunsul a fost gol. Raspunde clientului sau foloseste o unealta."]
             if not problems:
+                if turn.knowledge_misses and not turn.sources:
+                    # Fara raspuns aprobat nu pleaca un text improvizat.
+                    return self._knowledge_gap(state, turn, now)
+                self._attach_gaps(turn, {"kind": "reply", "text": text})
                 return [OutboundAction(kind="text", text=text)]
             turn.guard_retries += 1
             if turn.guard_retries > _MAX_GUARD_RETRIES:
                 break
             messages.append({"role": "user", "content": [{"type": "text", "text": _blocked_note(problems)}]})
 
-        return self._misunderstood(state, now, "Asistentul nu a reusit sa formuleze un raspuns valid.")
+        return self._gave_up(state, turn, now, problems)
 
     def _dispatch(self, state: ConversationState, turn: _Turn, call: ToolCall, now: datetime) -> _Outcome:
         handler = getattr(self, f"_tool_{call.name}", None)
@@ -326,7 +545,29 @@ class QuoteEngine:
             return _fail(f"Serviciul din spatele {call.name} este indisponibil acum. "
                          "Daca nu poti continua fara el, foloseste handoff.")
 
-    # ---------- unelte ----------
+    def _attach_gaps(self, turn: _Turn, default: dict | None = None) -> None:
+        """Mod asistat: omul afla si de intrebarile ramase fara raspuns aprobat."""
+        if turn.assist is None:
+            return
+        if turn.assist.result is None and default is not None:
+            turn.assist.result = default
+        if turn.assist.result is not None and turn.knowledge_misses and not turn.sources:
+            turn.assist.result.setdefault("gaps", [turn.customer_text or turn.knowledge_misses[0]])
+
+    def _gave_up(self, state: ConversationState, turn: _Turn, now: datetime,
+                 problems: list[str]) -> list[OutboundAction]:
+        if turn.assist is not None:
+            detail = "Verificările au blocat textul: " + " ".join(problems) if problems else ""
+            return self._handoff(state, HandoffReason.NOT_UNDERSTOOD, detail, now, assist=turn.assist)
+        return self._misunderstood(state, turn, now, "Asistentul nu a reusit sa formuleze un raspuns valid.")
+
+    def _knowledge_gap(self, state: ConversationState, turn: _Turn, now: datetime) -> list[OutboundAction]:
+        question = turn.customer_text or turn.knowledge_misses[0]
+        note = f"Nu avem un răspuns aprobat pentru: {question}"
+        return self._handoff(state, HandoffReason.NOT_UNDERSTOOD, note, now, assist=turn.assist, note=note,
+                             draft=offer_text.HOLDING_TEXT)
+
+    # ================= unelte =================
 
     def _tool_find_products(self, state, turn: _Turn, args: dict, now) -> _Outcome:
         products = _products(turn.catalog)
@@ -339,6 +580,32 @@ class QuoteEngine:
                 scored.append((score, product))
         chosen = [p for _, p in sorted(scored, key=lambda item: -item[0])][:5] or products[:10]
         return _Outcome(payload={"products": [_product_summary(p) for p in chosen]})
+
+    def _tool_search_knowledge(self, state: ConversationState, turn: _Turn, args: dict, now: datetime) -> _Outcome:
+        query = str(args["query"]).strip()
+        subject = str(args.get("product_or_material") or "").strip()
+        entries = []
+        if self.knowledge is not None and query:
+            entries = list(self.knowledge.search(f"{query} {subject}".strip(), limit=5))
+            if subject:
+                wanted = normalize(subject)
+                scoped = [e for e in entries
+                          if not e.applies_to or any(wanted in normalize(a) or normalize(a) in wanted
+                                                     for a in e.applies_to)]
+                entries = scoped or entries
+        if not entries:
+            turn.knowledge_misses.append(query)
+            self.store.add_gap(KnowledgeGap(channel=state.channel, key=state.key,
+                                            question=turn.customer_text, query=query, at=now))
+            return _Outcome(payload={
+                "entries": [],
+                "note": "Nu avem un raspuns aprobat. Nu improviza: un coleg va raspunde. Poti continua cu "
+                        "restul cererii (pret, intrebari) fara sa afirmi nimic despre acest subiect."})
+        for entry in entries:
+            turn.sources.append(f"{entry.question} {entry.answer}")
+        return _Outcome(payload={"entries": [
+            {"id": e.id, "topic": e.topic, "question": e.question, "answer": e.answer, "applies_to": e.applies_to}
+            for e in entries]})
 
     def _tool_get_price(self, state: ConversationState, turn: _Turn, args: dict, now: datetime) -> _Outcome:
         add_ons = {str(item["group"]): str(item["choice"]) for item in args.get("add_ons") or []}
@@ -357,13 +624,11 @@ class QuoteEngine:
 
         result = self.pricing.get_price(choices)
         if isinstance(result, Unpriced):
-            return _Outcome(payload={"status": "unpriced", "reason": result.reason, "details": result.details})
+            return _Outcome(payload={"status": "unpriced", "reason": result.reason, "details": result.details,
+                                     "hint": offer_text.unpriced_hint(result.reason, result.details)})
         if result.total_ex_vat > self.rules.handoff_value_threshold_ron_ex_vat:
-            # Peste prag decide codul: modelul nu vede pretul si nu poate trimite oferta.
-            state.summary = self._choices_summary(turn, result)
-            return _Outcome(actions=self._handoff(
-                state, HandoffReason.VALUE_OVER_THRESHOLD,
-                f"{state.summary}. Valoare fara TVA: {result.total_ex_vat} RON.", now, quote=result))
+            # Peste prag decide codul: modelul nu vede pretul si nu poate propune oferta.
+            return _Outcome(actions=self._over_threshold(state, turn, [result], now))
 
         state.quote_seq += 1
         quote_id = f"q{state.quote_seq}"
@@ -371,14 +636,20 @@ class QuoteEngine:
         for old in list(state.quotes)[:-_KEPT_QUOTES]:
             state.quotes.pop(old, None)
             state.tiers.pop(old, None)
+            state.payment_links.pop(old, None)
         state.misunderstandings = 0
-        return _Outcome(payload={
+        payload = {
             "status": "priced", "quote_id": quote_id, "quantity": result.choices.quantity,
             "total_with_vat": str(result.total), "total_ex_vat": str(result.total_ex_vat),
-            "unit_price": str(result.unit_price), "discount_percent": str(result.discount_percent),
+            "unit_price_with_vat": str(result.unit_price), "discount_percent": str(result.discount_percent),
             "cap_quantity": result.cap_quantity,
-            "next": "get_price_tiers, apoi create_checkout. Nu scrie pretul in text.",
-        })
+            "next": "create_checkout pentru oferta sau send_price_comparison pentru o comparatie. "
+                    "Nu scrie pretul in text.",
+        }
+        promo = offer_text.promo_percent(result)
+        if promo > 0:
+            payload["active_promo_percent"] = str(promo)
+        return _Outcome(payload=payload)
 
     def _tool_get_price_tiers(self, state: ConversationState, turn, args: dict, now) -> _Outcome:
         quote_id = str(args["quote_id"])
@@ -389,9 +660,9 @@ class QuoteEngine:
         state.tiers[quote_id] = tiers
         return _Outcome(payload={"quote_id": quote_id, "tiers": [
             {"quantity": t.quantity, "total_with_vat": str(t.total), "total_ex_vat": str(t.total_ex_vat),
-             "unit_price": str(t.unit_price)} for t in tiers]})
+             "unit_price_with_vat": str(t.unit_price)} for t in tiers]})
 
-    def _tool_check_file(self, state: ConversationState, turn, args: dict, now: datetime) -> _Outcome:
+    def _tool_check_file(self, state: ConversationState, turn: _Turn, args: dict, now: datetime) -> _Outcome:
         if state.design is None:
             return _fail("Clientul nu a trimis niciun fisier.")
         report = self.files.check_file(state.design.path, _decimal(args["width_cm"]), _decimal(args["height_cm"]))
@@ -402,7 +673,8 @@ class QuoteEngine:
             if state.file_failures >= self.rules.max_file_attempts:
                 return _Outcome(actions=self._handoff(
                     state, HandoffReason.FILE_UNUSABLE,
-                    f"Fisier inutilizabil dupa {state.file_failures} incercari: {', '.join(report.problems)}", now))
+                    f"Fișier inutilizabil după {state.file_failures} încercări: {', '.join(report.problems)}",
+                    now, assist=turn.assist))
         return _Outcome(payload={
             "verdict": report.verdict.value, "kind": report.kind, "problems": report.problems,
             "dpi_at_size": str(report.dpi_at_size) if report.dpi_at_size is not None else None,
@@ -418,11 +690,60 @@ class QuoteEngine:
         state.mockup_path = result.image_path
         return _Outcome(payload={"status": "ok", "template_id": result.template_id})
 
+    def _quote_ids(self, state: ConversationState, args: dict) -> tuple[list[str], str | None]:
+        raw = args.get("quote_ids") or ([args["quote_id"]] if args.get("quote_id") else [])
+        ids = list(dict.fromkeys(str(q) for q in raw))
+        if not ids:
+            return [], "Lipseste quote_ids. Cheama intai get_price."
+        missing = [q for q in ids if q not in state.quotes]
+        if missing:
+            return [], f"quote_id necunoscut: {', '.join(missing)}. Cheama intai get_price."
+        return ids, None
+
     def _tool_create_checkout(self, state: ConversationState, turn: _Turn, args: dict, now: datetime) -> _Outcome:
-        quote_id = str(args["quote_id"])
-        if quote_id not in state.quotes:
-            return _fail(f"quote_id necunoscut: {quote_id}. Cheama intai get_price.")
-        return _Outcome(actions=self._finalize_offer(state, turn, quote_id, str(args.get("summary", "")), now))
+        ids, problem = self._quote_ids(state, args)
+        if problem:
+            return _fail(problem)
+        language = _language(args)
+        return _Outcome(actions=self._finalize_offer(state, turn, ids, str(args.get("summary", "")), now, language))
+
+    def _tool_send_price_comparison(self, state: ConversationState, turn: _Turn, args: dict,
+                                    now: datetime) -> _Outcome:
+        ids, problem = self._quote_ids(state, args)
+        if problem:
+            return _fail(problem)
+        intro = str(args.get("intro") or "").strip()
+        closing = str(args.get("closing") or "").strip()
+        problems = self._guard(state, turn, f"{intro} {closing}") if intro or closing else []
+        if problems:
+            turn.guard_retries += 1
+            if turn.guard_retries > _MAX_GUARD_RETRIES:
+                return _Outcome(actions=self._gave_up(state, turn, now, problems))
+            return _fail(" ".join(problems))
+        language = _language(args)
+        quotes = [state.quotes[q] for q in ids]
+        tiers = None
+        if args.get("include_tiers"):
+            tiers = state.tiers.get(ids[0])
+            if tiers is None:
+                tiers = list(self.pricing.get_price_tiers(quotes[0].choices, self.rules.upsell_tier_count))
+                state.tiers[ids[0]] = tiers
+            threshold = self.rules.handoff_value_threshold_ron_ex_vat
+            tiers = [t for t in tiers if t.total_ex_vat <= threshold]
+        titles = [_product_title(turn.catalog, q.choices.product_id) for q in quotes]
+        text = offer_text.build_comparison_text(quotes, titles, tiers, intro, closing, language)
+        if turn.assist is not None:
+            turn.assist.result = {
+                "kind": "reply", "text": text,
+                "offer_lines": [offer_text.quote_line(q, t, language) for q, t in zip(quotes, titles)],
+                "note_for_staff": "Comparație de preț compusă din calculator; nu este încă o ofertă cu link."}
+        return _Outcome(actions=[OutboundAction(kind="text", text=text)])
+
+    def _tool_no_reply(self, state: ConversationState, turn: _Turn, args: dict, now) -> _Outcome:
+        if turn.assist is not None:
+            turn.assist.result = {"kind": "none",
+                                  "note_for_staff": f"Nu este nevoie de răspuns: {str(args.get('reason', ''))[:200]}"}
+        return _Outcome(actions=[])
 
     def _tool_upsert_lead(self, state: ConversationState, turn, args: dict, now) -> _Outcome:
         state.summary = str(args["summary"])[:500]
@@ -432,11 +753,12 @@ class QuoteEngine:
         self._crm(state, state.status, quote=_last_quote(state))
         return _Outcome(payload={"status": "ok"})
 
-    def _tool_handoff(self, state: ConversationState, turn, args: dict, now: datetime) -> _Outcome:
+    def _tool_handoff(self, state: ConversationState, turn: _Turn, args: dict, now: datetime) -> _Outcome:
         reason = str(args["reason"])
         if reason not in MODEL_HANDOFF_REASONS:
             return _fail(f"Motiv invalid. Variante: {', '.join(MODEL_HANDOFF_REASONS)}")
-        return _Outcome(actions=self._handoff(state, HandoffReason(reason), str(args.get("summary", ""))[:500], now))
+        return _Outcome(actions=self._handoff(state, HandoffReason(reason), str(args.get("summary", ""))[:500], now,
+                                              assist=turn.assist))
 
     def _tool_ask_customer(self, state: ConversationState, turn: _Turn, args: dict, now: datetime) -> _Outcome:
         text = str(args["text"]).strip()
@@ -448,10 +770,12 @@ class QuoteEngine:
                 titles.append(title)
         if not text:
             return _fail("Intrebarea este goala.")
+        assist = turn.assist
+        over_cap = kind == "clarify" and state.questions_asked >= self.rules.max_clarifying_questions
 
-        if kind == "not_understood":
-            return _Outcome(actions=self._misunderstood(state, now, text, question=text))
-        if kind == "clarify" and state.questions_asked >= self.rules.max_clarifying_questions:
+        if kind == "not_understood" and assist is None:
+            return _Outcome(actions=self._misunderstood(state, turn, now, text, question=text))
+        if over_cap and assist is None:
             turn.question_rejections += 1
             if turn.question_rejections >= 2:
                 return _Outcome(actions=self._handoff(
@@ -464,9 +788,11 @@ class QuoteEngine:
         if problems:
             turn.guard_retries += 1
             if turn.guard_retries > _MAX_GUARD_RETRIES:
-                return _Outcome(actions=self._misunderstood(state, now, "Intrebare blocata de verificari."))
+                return _Outcome(actions=self._gave_up(state, turn, now, problems))
             return _fail(" ".join(problems))
 
+        if assist is not None:
+            return _Outcome(actions=self._assist_question(state, turn, text, titles, kind, over_cap, now))
         if kind == "clarify":
             state.questions_asked += 1
         fits = 0 < len(titles) <= MAX_BUTTONS and all(len(t) <= BUTTON_TITLE_MAX for t in titles)
@@ -480,36 +806,38 @@ class QuoteEngine:
             text = "\n".join([text, *[f"{i}. {t}" for i, t in enumerate(titles, start=1)]])
         return _Outcome(actions=[OutboundAction(kind="text", text=text)])
 
-    # ---------- oferta ----------
+    def _assist_question(self, state: ConversationState, turn: _Turn, text: str, titles: list[str], kind: str,
+                         over_cap: bool, now: datetime) -> list[OutboundAction]:
+        """Fara butoane: textul trebuie sa se inteleaga singur; limita de intrebari devine o nota pentru om."""
+        notes = []
+        if kind == "not_understood":
+            state.misunderstandings += 1
+            if state.misunderstandings >= self.rules.max_misunderstandings:
+                return self._handoff(
+                    state, HandoffReason.NOT_UNDERSTOOD,
+                    f"Cererea nu a fost înțeleasă după {state.misunderstandings} schimburi.", now,
+                    assist=turn.assist, draft=text)
+            notes.append("Asistentul nu a înțeles cererea; verificați întrebarea înainte de trimitere.")
+        if kind == "clarify":
+            state.questions_asked += 1
+            if over_cap:
+                notes.append(f"S-au pus deja {self.rules.max_clarifying_questions} întrebări de clarificare "
+                             "(limita recomandată). Luați în calcul un apel sau o ofertă cu variantele obișnuite.")
+        plain = normalize(text)
+        if titles and not all(normalize(t) in plain for t in titles):
+            text = f"{text}\nVariante: {', '.join(titles)}."
+        turn.assist.result = {"kind": "question", "text": text, "options": titles, "note_for_staff": " ".join(notes)}
+        return [OutboundAction(kind="text", text=text)]
 
-    def _finalize_offer(self, state: ConversationState, turn: _Turn, quote_id: str, summary: str,
-                        now: datetime) -> list[OutboundAction]:
-        quote = state.quotes[quote_id]
+    # ================= oferta =================
+
+    def _compose(self, state: ConversationState, turn: _Turn, quotes: list[PriceQuote], quote_id: str | None,
+                 now: datetime, language: str) -> dict:
+        """Liniile, textul si imaginea ofertei, numai din rezultatele calculatorului."""
         threshold = self.rules.handoff_value_threshold_ron_ex_vat
-        if summary:
-            state.summary = summary[:500]
-        if quote.total_ex_vat > threshold:
-            return self._handoff(state, HandoffReason.VALUE_OVER_THRESHOLD, state.summary, now, quote=quote)
-
-        today = now.date()
-        state.offer_times = [t for t in state.offer_times if (today - to_local(t).date()).days <= 1]
-        if sum(1 for t in state.offer_times if to_local(t).date() == today) >= self.rules.max_offers_per_contact_per_day:
-            # Contractul nu are un motiv dedicat pentru limita de oferte.
-            actions = self._handoff(state, HandoffReason.SPECIAL_TERMS,
-                                    f"Limita zilnica de oferte automate atinsa. {state.summary}".strip(), now)
-            actions[0].text = f"{offer_text.OFFER_LIMIT_TEXT} {actions[0].text}"
-            return actions
-
-        try:
-            tiers = state.tiers.get(quote_id)
-            if tiers is None:
-                tiers = list(self.pricing.get_price_tiers(quote.choices, self.rules.upsell_tier_count))
-                state.tiers[quote_id] = tiers
-        except Exception:
-            log.exception("treptele de cantitate nu au putut fi citite")
-            tiers = []
-        lines = offer_text.build_lines(quote, tiers, threshold)
-
+        titles = [_product_title(turn.catalog, q.choices.product_id) for q in quotes]
+        valid_until = now + timedelta(days=self.rules.offer_validity_days)
+        term = self.rules.production_term(any(q.choices.urgent for q in quotes))
         usable_file = state.design is not None and not (
             state.file_report is not None and state.file_report.verdict == FileVerdict.UNUSABLE)
         if usable_file and state.mockup_path is None:
@@ -517,25 +845,115 @@ class QuoteEngine:
                 state.mockup_path = self.mockup.make_mockup(
                     state.design.path, state.summary[:80], self._out_dir(state)).image_path
             except Exception:
-                log.exception("mockup esuat; oferta pleaca fara mockup")
-        valid_until = now + timedelta(days=self.rules.offer_validity_days)
-        term = self.rules.production_term(quote.choices.urgent)
+                log.exception("mockup esuat; oferta ramane fara mockup")
+
+        if len(quotes) == 1:
+            quote = quotes[0]
+            tiers = state.tiers.get(quote_id) if quote_id else None
+            if tiers is None:
+                try:
+                    tiers = list(self.pricing.get_price_tiers(quote.choices, self.rules.upsell_tier_count))
+                    if quote_id:
+                        state.tiers[quote_id] = tiers
+                except Exception:
+                    log.exception("treptele de cantitate nu au putut fi citite")
+                    tiers = []
+            lines = offer_text.build_lines(quote, tiers, threshold, language)
+            text = offer_text.build_offer_text(quote, lines, titles[0], term, valid_until, state.file_report, language)
+        else:
+            lines = [offer_text.quote_line(q, t, language) for q, t in zip(quotes, titles)]
+            text = offer_text.build_multi_offer_text(lines, term, valid_until, state.file_report, language)
         try:
             image_path = self.mockup.make_offer_image(
                 state.mockup_path if usable_file else None, lines, term, valid_until, self._out_dir(state))
         except Exception:
             log.exception("imaginea de oferta nu a putut fi generata")
             image_path = None
-        text = offer_text.build_offer_text(
-            quote, lines, _product_title(turn.catalog, quote.choices.product_id), term, valid_until, state.file_report)
-        artwork_url = state.design.public_url if state.design is not None else None
+        return {"lines": lines, "text": text, "image_path": image_path, "valid_until": valid_until,
+                "artwork_url": state.design.public_url if state.design is not None else None}
 
+    def _over_threshold(self, state: ConversationState, turn: _Turn, quotes: list[PriceQuote],
+                        now: datetime) -> list[OutboundAction]:
+        total_ex_vat = sum((q.total_ex_vat for q in quotes), Decimal(0))
+        titles = [_product_title(turn.catalog, q.choices.product_id) for q in quotes]
+        state.summary = "; ".join(", ".join(offer_text.choice_parts(q, t)) for q, t in zip(quotes, titles))[:500]
+        summary = f"{state.summary}. Valoare fără TVA: {offer_text.format_money(total_ex_vat)} lei."
+        if turn.assist is None:
+            return self._handoff(state, HandoffReason.VALUE_OVER_THRESHOLD, summary, now, quote=quotes[0])
+        # Un om se uita la sugestie: primeste pretul calculatorului, dar nu un text gata de trimis.
+        offer = self._compose(state, turn, quotes, None, now, "ro")
+        actions = self._handoff(state, HandoffReason.VALUE_OVER_THRESHOLD, state.summary, now,
+                                quote=quotes[0] if len(quotes) == 1 else None, assist=turn.assist)
+        turn.assist.result.update({
+            "text": "", "image_path": offer["image_path"], "offer_lines": offer["lines"],
+            "can_create_payment_link": len(quotes) == 1, "quotes": quotes, "offer_text": offer["text"],
+            "valid_until": offer["valid_until"], "artwork_url": offer["artwork_url"]})
+        if len(quotes) > 1:
+            turn.assist.result["note_for_staff"] += (
+                f" Total calculator: {offer_text.money_pair(*offer_text.sum_lines(offer['lines']))}.")
+        return actions
+
+    def _finalize_offer(self, state: ConversationState, turn: _Turn, quote_ids: list[str], summary: str,
+                        now: datetime, language: str = "ro") -> list[OutboundAction]:
+        quotes = [state.quotes[q] for q in quote_ids]
+        assist = turn.assist
+        if summary:
+            state.summary = summary[:500]
+        if sum((q.total_ex_vat for q in quotes), Decimal(0)) > self.rules.handoff_value_threshold_ron_ex_vat:
+            return self._over_threshold(state, turn, quotes, now)
+
+        single = quote_ids[0] if len(quote_ids) == 1 else None
+        existing = state.payment_links.get(single) if single else None
+        if existing:
+            # Clientul cere din nou linkul: nu se creeaza o a doua comanda.
+            offer = self._compose(state, turn, quotes, single, now, language)
+            text = offer_text.with_payment_link(offer["text"], quotes[0], existing, signature=assist is None,
+                                                language=language)
+            if assist is not None:
+                assist.result = {"kind": "offer", "text": text, "image_path": offer["image_path"],
+                                 "offer_lines": offer["lines"], "payment_url": existing, "language": language,
+                                 "note_for_staff": "Linkul de plată a fost deja creat pentru această ofertă."}
+            return [OutboundAction(kind="text", text=text)]
+
+        today = now.date()
+        state.offer_times = [t for t in state.offer_times if (today - to_local(t).date()).days <= 1]
+        if sum(1 for t in state.offer_times if to_local(t).date() == today) >= self.rules.max_offers_per_contact_per_day:
+            actions = self._handoff(state, HandoffReason.OFFER_LIMIT,
+                                    f"Limita zilnică de oferte automate atinsă. {state.summary}".strip(), now,
+                                    quote=quotes[0], assist=assist)
+            if assist is None:
+                actions[0].text = f"{offer_text.OFFER_LIMIT_TEXT} {actions[0].text}"
+            return actions
+
+        offer = self._compose(state, turn, quotes, single, now, language)
+        lines, text, image_path = offer["lines"], offer["text"], offer["image_path"]
+
+        if assist is not None:
+            self._mark_offer(state, now)
+            note = "Ofertă compusă din calculator. Linkul de plată se creează la cerere, după ce clientul acceptă."
+            if len(quotes) > 1:
+                note = ("Ofertă cu mai multe produse, compusă din calculator. Linkul de plată pentru mai multe "
+                        "linii nu se poate crea automat; creați comanda manual.")
+            assist.result = {
+                "kind": "offer", "text": text, "image_path": image_path, "offer_lines": lines,
+                "can_create_payment_link": len(quotes) == 1, "note_for_staff": note, "quotes": quotes,
+                "offer_text": text, "valid_until": offer["valid_until"], "artwork_url": offer["artwork_url"],
+                "language": language}
+            self._crm(state, "offer_suggested", quote=quotes[0])
+            return [OutboundAction(kind="text", text=text)]
+
+        if len(quotes) > 1:
+            # CheckoutPort primeste o singura linie: linkul pentru mai multe produse il face un om.
+            return self._handoff(state, HandoffReason.SPECIAL_TERMS,
+                                 f"Oferta cu mai multe produse; linkul de plata trebuie creat manual. {state.summary}",
+                                 now, quote=quotes[0])
+        quote = quotes[0]
         if self.rules.shadow_mode:
             self._supersede_pending(state)
             approval = Approval(
                 id=self._new_id(), channel=state.channel, key=state.key, created_at=now, quote=quote,
-                lines=lines, offer_text=text, image_path=image_path, artwork_url=artwork_url,
-                valid_until=valid_until, summary=state.summary)
+                lines=lines, offer_text=text, image_path=image_path, artwork_url=offer["artwork_url"],
+                valid_until=offer["valid_until"], summary=state.summary)
             self.store.save_approval(approval)
             self._mark_offer(state, now)
             state.pending_approval_id = approval.id
@@ -545,12 +963,12 @@ class QuoteEngine:
             return [OutboundAction(kind="pending_approval", text=text, image_path=image_path, approval_id=approval.id)]
 
         try:
-            checkout = self.checkout.create_checkout(quote, state.contact, artwork_url, valid_until)
+            checkout = self.checkout.create_checkout(quote, state.contact, offer["artwork_url"], offer["valid_until"])
         except Exception:
             log.exception("checkout-ul nu a putut fi creat")
             return self._handoff(state, HandoffReason.NOT_UNDERSTOOD,
                                  f"Eroare tehnica la crearea linkului de plata. {state.summary}".strip(), now, quote=quote)
-        if checkout.total.quantize(Decimal("0.01")) != quote.total.quantize(Decimal("0.01")):
+        if not _same_money(checkout.total, quote.total):
             log.error("checkout %s are totalul %s, calculatorul %s", checkout.draft_order_id, checkout.total, quote.total)
             return self._handoff(state, HandoffReason.NOT_UNDERSTOOD,
                                  f"Totalul din checkout difera de pretul calculatorului. {state.summary}".strip(),
@@ -558,15 +976,18 @@ class QuoteEngine:
         self._supersede_pending(state)
         self._mark_offer(state, now)
         state.status = "offer_sent"
+        state.payment_links[single] = checkout.invoice_url
         self._crm(state, "offer_sent", quote=quote, checkout=checkout)
-        return self._offer_actions(text, quote, checkout.invoice_url, image_path)
+        return self._offer_actions(text, quote, checkout.invoice_url, image_path, language)
 
     @staticmethod
-    def _offer_actions(text: str, quote: PriceQuote, invoice_url: str, image_path: str | None) -> list[OutboundAction]:
+    def _offer_actions(text: str, quote: PriceQuote, invoice_url: str, image_path: str | None,
+                       language: str = "ro") -> list[OutboundAction]:
         actions = []
         if image_path:
             actions.append(OutboundAction(kind="image", image_path=image_path))
-        actions.append(OutboundAction(kind="text", text=offer_text.with_payment_link(text, quote, invoice_url)))
+        actions.append(OutboundAction(
+            kind="text", text=offer_text.with_payment_link(text, quote, invoice_url, language=language)))
         return actions
 
     def _mark_offer(self, state: ConversationState, now: datetime) -> None:
@@ -594,12 +1015,22 @@ class QuoteEngine:
             raise ApprovalError(f"aprobarea {approval_id} este deja {approval.status}")
         return approval
 
-    # ---------- predare, neintelegeri ----------
+    # ================= predare, neintelegeri =================
 
     def _handoff(self, state: ConversationState, reason: HandoffReason, summary: str, now: datetime,
-                 quote: PriceQuote | None = None) -> list[OutboundAction]:
+                 quote: PriceQuote | None = None, assist: _Assist | None = None, draft: str = "",
+                 note: str = "") -> list[OutboundAction]:
         if summary:
             state.summary = summary[:500]
+        if assist is not None:
+            # Mod asistat: omul este deja in conversatie, deci nimic nu se opreste si nimic nu se anunta.
+            shown = quote or (_last_quote(state) if reason == HandoffReason.SPECIAL_TERMS else None)
+            assist.result = {
+                "kind": "needs_human", "text": draft or offer_text.assist_draft(reason), "handoff_reason": reason,
+                "note_for_staff": note or offer_text.staff_note(self.rules, reason, summary, shown)}
+            state.pending_buttons = {}
+            self._crm(state, "needs_human", quote=shown)
+            return [OutboundAction(kind="handoff", text=assist.result["text"], handoff_reason=reason)]
         try:
             self.handoff_port.handoff(state.contact, reason, state.summary, now)
         except Exception:
@@ -612,16 +1043,14 @@ class QuoteEngine:
         return [OutboundAction(kind="handoff", text=offer_text.handoff_text(self.rules, reason, now),
                                handoff_reason=reason)]
 
-    def _misunderstood(self, state: ConversationState, now: datetime, summary: str,
+    def _misunderstood(self, state: ConversationState, turn: _Turn | None, now: datetime, summary: str,
                        question: str | None = None) -> list[OutboundAction]:
+        """Mod autonom: dupa numarul permis de neintelegeri, conversatia merge la om."""
         state.misunderstandings += 1
         if state.misunderstandings >= self.rules.max_misunderstandings:
             return self._handoff(state, HandoffReason.NOT_UNDERSTOOD,
                                  f"Cerere neinteleasa dupa {state.misunderstandings} schimburi. {summary}"[:500], now)
-        text = question or offer_text.NOT_UNDERSTOOD_TEXT
-        if question and self._guard_plain(state, question):
-            text = offer_text.NOT_UNDERSTOOD_TEXT
-        return [OutboundAction(kind="text", text=text)]
+        return [OutboundAction(kind="text", text=question or offer_text.NOT_UNDERSTOOD_TEXT)]
 
     def _reset_for_new_request(self, state: ConversationState) -> None:
         state.status = "collecting"
@@ -632,52 +1061,68 @@ class QuoteEngine:
         state.last_failed_file = None
         state.pending_buttons = {}
 
-    # ---------- verificari pe textul modelului ----------
+    def _take_design(self, state: ConversationState, attachments: list[Attachment]) -> None:
+        usable = [a for a in attachments if not _unsupported(a)]
+        if usable:
+            state.design = usable[-1]
+            state.file_report = None
+            state.mockup_path = None
+
+    # ================= verificari pe textul modelului =================
 
     def _guard(self, state: ConversationState, turn: _Turn, text: str) -> list[str]:
         amounts: list[Decimal] = []
-        percents: list[Decimal] = [self.rules.vat_percent]
+        percents: list[Decimal] = [self.rules.vat_percent, *_catalog_percents(turn.catalog)]
         for quote in state.quotes.values():
             amounts += [quote.total, quote.total_ex_vat, quote.unit_price]
-            percents.append(quote.discount_percent)
+            percents += [quote.discount_percent, offer_text.promo_percent(quote)]
         for tiers in state.tiers.values():
             for tier in tiers:
                 amounts += [tier.total, tier.total_ex_vat, tier.unit_price]
         return check_text(
             text, allowed_amounts=amounts, allowed_percents=percents,
             approved_claims=self.rules.approved_material_claims, catalog_terms=turn.catalog_terms,
-            allowed_terms=[t for t in (self.rules.production_term_standard, self.rules.production_term_urgent) if t])
+            allowed_terms=[t for t in (self.rules.production_term_standard, self.rules.production_term_urgent) if t],
+            sources=turn.sources)
 
-    def _guard_plain(self, state: ConversationState, text: str) -> list[str]:
-        return self._guard(state, _Turn(catalog={}), text)
+    # ================= context pentru model =================
 
-    # ---------- context pentru model ----------
-
-    def _render_turn(self, state: ConversationState, message: InboundMessage, now: datetime) -> str:
+    def _render_turn(self, state: ConversationState, message: InboundMessage, now: datetime,
+                     assisted: bool = False, current_id: str | None = None) -> str:
         left = max(self.rules.max_clarifying_questions - state.questions_asked, 0)
         rows = [
             f"Ora curenta: {now.strftime('%Y-%m-%d %H:%M')} (Europe/Bucharest), {_WEEKDAYS[now.weekday()]}.",
+            MODE_ASSIST if assisted else MODE_AUTONOMOUS,
             f"Canal: {state.channel}. Starea conversatiei: {state.status}.",
             f"Intrebari de clarificare ramase: {left}.",
         ]
+        if self.knowledge is not None:
+            try:
+                rows.append(f"Subiecte in baza de cunostinte: {', '.join(self.knowledge.topics())}.")
+            except Exception:
+                log.exception("subiectele bazei de cunostinte nu au putut fi citite")
         if state.design is not None:
-            name = state.design.filename or Path(state.design.path).name
             check = "neverificat"
             if state.file_report is not None:
                 check = f"{state.file_report.verdict.value} {state.file_report.problems}"
-            rows.append(f"Fisier de la client: {wrap_file(name)} ({state.design.mime}); verificare: {check}; "
-                        f"mockup: {'facut' if state.mockup_path else 'nefacut'}.")
+            rows.append(f"Fisier de la client: {wrap_file(_file_name(state.design))} ({state.design.mime}); "
+                        f"verificare: {check}; mockup: {'facut' if state.mockup_path else 'nefacut'}.")
         else:
             rows.append("Fisier de la client: niciunul.")
         if state.quotes:
             rows.append("Oferte pretuite pana acum (din calculator):")
             for quote_id, quote in state.quotes.items():
                 c = quote.choices
+                link = " [link de plata deja creat]" if quote_id in state.payment_links else ""
                 rows.append(
                     f"- {quote_id}: produs {c.product_id}, {c.shape}, {c.width_cm} x {c.height_cm} cm, "
-                    f"{c.material_name}, {c.quantity} buc; total cu TVA {quote.total}, fara TVA {quote.total_ex_vat}")
+                    f"{c.material_name}, {c.quantity} buc; total cu TVA {quote.total}, fara TVA {quote.total_ex_vat}{link}")
 
-        history = self.store.recent_messages(state.channel, state.key, _TRANSCRIPT_LIMIT + 1)[:-1]
+        history = self.store.recent_messages(state.channel, state.key, _TRANSCRIPT_LIMIT + 1)
+        if current_id is not None:
+            history = [entry for entry in history if entry.meta.get("id") != current_id]
+        else:
+            history = history[:-1]
         if history:
             rows.append("")
             rows.append("Conversatia de pana acum:")
@@ -702,15 +1147,10 @@ class QuoteEngine:
         rows.append("Mesajul curent al clientului:")
         rows.append(wrap_customer(text))
         if message.attachments:
-            names = ", ".join(a.filename or Path(a.path).name for a in message.attachments)
-            rows.append(f"Fisiere atasate acum: {wrap_file(names)}")
+            rows.append(f"Fisiere atasate acum: {wrap_file(', '.join(_file_name(a) for a in message.attachments))}")
         return "\n".join(rows)
 
-    def _choices_summary(self, turn: _Turn, quote: PriceQuote) -> str:
-        title = _product_title(turn.catalog, quote.choices.product_id)
-        return f"{offer_text.describe_choices(quote, title)}, {quote.choices.quantity} buc"
-
-    # ---------- utilitare ----------
+    # ================= utilitare =================
 
     def _lock(self, channel: str, key: str) -> threading.Lock:
         with self._locks_guard:
@@ -742,11 +1182,39 @@ class QuoteEngine:
             state.first_reply_at = now
 
 
-# ---------- functii pure ----------
+# ================= functii pure =================
 
 def _merge_contact(known: Contact, incoming: Contact) -> Contact:
     updates = {k: v for k, v in incoming.model_dump().items() if v is not None}
     return known.model_copy(update=updates)
+
+
+def _ordered(messages: list[AssistMessage]) -> list[AssistMessage]:
+    """Fara dubluri; dupa ora trimiterii cand toate o au, altfel in ordinea primita."""
+    unique = list({m.id: m for m in messages}.values())
+    if unique and all(m.sent_at is not None for m in unique):
+        return sorted(unique, key=lambda m: to_local(m.sent_at))
+    return unique
+
+
+def _match_outcome(suggested: str, sent: str) -> str:
+    left, right = normalize(suggested), normalize(sent)
+    if left == right:
+        return "exact"
+    return "edited" if difflib.SequenceMatcher(None, left, right).ratio() >= _EDITED_RATIO else "ignored"
+
+
+def _file_name(attachment: Attachment) -> str:
+    return attachment.filename or Path(attachment.path).name
+
+
+def _unsupported(attachment: Attachment) -> bool:
+    return attachment.mime.lower().startswith(_UNSUPPORTED_MIME)
+
+
+def _language(args: dict) -> str:
+    language = str(args.get("language") or "ro")
+    return language if language in offer_text.LANGUAGES else "ro"
 
 
 def _assistant_content(reply: ModelReply) -> object:
@@ -789,7 +1257,7 @@ def _material_names(product: dict) -> list[str]:
 
 
 def _product_summary(product: dict) -> dict:
-    keep = ("id", "title", "shapes", "customSize", "sizesByShape", "addOnGroups", "quantity")
+    keep = ("id", "title", "shapes", "customSize", "sizesByShape", "addOnGroups", "quantity", "options")
     summary = {k: product[k] for k in keep if k in product}
     summary["materials"] = _material_names(product)
     return summary
@@ -807,6 +1275,19 @@ def _catalog_terms(catalog: dict) -> list[str]:
                 terms.append(str(group.get("name") or ""))
                 terms += [str(c.get("name") or "") for c in group.get("choices") or [] if isinstance(c, dict)]
     return [t for t in terms if t]
+
+
+def _catalog_percents(catalog: dict) -> list[Decimal]:
+    """Reducerile de cantitate din catalog: singurele procente pe care modelul le poate repeta."""
+    found: list[Decimal] = []
+    for product in _products(catalog):
+        quantity = product.get("quantity")
+        for tier in (quantity.get("tiers") or []) if isinstance(quantity, dict) else []:
+            try:
+                found.append(Decimal(str(tier.get("discountPercent"))))
+            except (AttributeError, InvalidOperation):
+                continue
+    return found
 
 
 def _pick(value: str, options: list[str]) -> str | None:

@@ -37,6 +37,10 @@ _LINE_PROPERTIES = {
 }
 
 
+_LANGUAGE = {"type": "string", "enum": ["ro", "en", "hu"],
+             "description": "Limba clientului, daca nu scrie in romana."}
+
+
 def _tool(name: str, description: str, properties: dict, required: list[str]) -> dict:
     return {
         "name": name,
@@ -87,13 +91,49 @@ TOOLS: list[dict] = sorted([
     ),
     _tool(
         "create_checkout",
-        "Incheie ofertarea pentru un quote_id: sistemul compune oferta (imagine, pret fara si cu TVA, termen, "
-        "valabilitate, link de plata) si o trimite. Dupa acest apel runda se incheie.",
+        "Incheie ofertarea: sistemul compune oferta (imagine, pret fara si cu TVA, termen, valabilitate) din "
+        "ofertele pretuite date. Un singur quote_id pentru o comanda obisnuita; mai multe cand clientul vrea "
+        "produse diferite in aceeasi comanda (totalul il aduna sistemul). Dupa acest apel runda se incheie.",
         {
-            "quote_id": {"type": "string"},
+            "quote_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
             "summary": {"type": "string", "description": "Rezumat scurt al comenzii, pentru CRM."},
+            "language": _LANGUAGE,
         },
-        ["quote_id", "summary"],
+        ["quote_ids", "summary"],
+    ),
+    _tool(
+        "send_price_comparison",
+        "Raspunde la o intrebare de pret cu o comparatie compusa de sistem din oferte deja pretuite: mai multe "
+        "cantitati, dimensiuni, materiale, cu si fara o optiune (adeziv puternic, print alb, taiere, urgenta), "
+        "pret cu si fara TVA. Cu include_tiers sistemul adauga treptele de cantitate ale primei oferte "
+        "(de la ce cantitate scade pretul pe bucata). intro si closing sunt propozitii scurte, fara sume. "
+        "Dupa acest apel runda se incheie.",
+        {
+            "quote_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            "intro": {"type": "string"},
+            "closing": {"type": "string", "description": "De exemplu: Pe care o preferati?"},
+            "include_tiers": {"type": "boolean"},
+            "language": _LANGUAGE,
+        },
+        ["quote_ids"],
+    ),
+    _tool(
+        "search_knowledge",
+        "Cauta in baza de cunostinte aprobata (materiale, rezistenta la apa, UV, ulei, livrare, plata, fisiere, "
+        "mostre, comenzi). Intoarce intrarile verificate. Despre aceste subiecte poti spune numai ce scrie in "
+        "intrarile intoarse. Lista goala inseamna ca nu avem un raspuns aprobat.",
+        {
+            "query": {"type": "string", "description": "Intrebarea clientului, pe scurt, in romana."},
+            "product_or_material": {"type": "string", "description": "Produsul sau materialul la care se refera."},
+        },
+        ["query"],
+    ),
+    _tool(
+        "no_reply",
+        "Nu este nevoie de niciun raspuns: spam, mesaj fara legatura cu noi, sau o incheiere la care nu mai e "
+        "nimic de adaugat. Dupa acest apel runda se incheie.",
+        {"reason": {"type": "string"}},
+        ["reason"],
     ),
     _tool(
         "upsert_lead",

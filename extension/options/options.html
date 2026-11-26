@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EC Quote: opțiuni</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header class="top">
+      <img src="../icons/icon48.png" width="40" height="40" alt="">
+      <div>
+        <h1>EC Quote Asistent WhatsApp</h1>
+        <p class="sub">Sugestii de răspuns și oferte. Fiecare mesaj este trimis de operator.</p>
+      </div>
+    </header>
+
+    <form id="form" novalidate>
+      <section class="card">
+        <h2>Conexiune</h2>
+        <div class="field">
+          <label for="baseUrl">Adresa serverului</label>
+          <input id="baseUrl" name="baseUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+                 placeholder="https://quote.exemplu.ro" aria-describedby="baseUrlHint">
+          <p class="hint" id="baseUrlHint">Adresa serviciului ec-quote, cu https. La salvare, Chrome cere acordul pentru acces la această adresă.</p>
+        </div>
+        <div class="field">
+          <label for="token">Token personal</label>
+          <input id="token" name="token" type="password" autocomplete="off" spellcheck="false" aria-describedby="tokenHint">
+          <p class="hint" id="tokenHint">Tokenul este personal și rămâne doar în acest browser. Lăsați câmpul gol pentru a păstra tokenul salvat.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Funcționare</h2>
+        <label class="switch">
+          <input id="enabled" name="enabled" type="checkbox">
+          <span class="track" aria-hidden="true"></span>
+          <span>Asistent activ pe WhatsApp Web</span>
+        </label>
+        <fieldset>
+          <legend>Sugestii</legend>
+          <label class="radio"><input type="radio" name="mode" value="auto"> Automat, la fiecare mesaj nou al clientului</label>
+          <label class="radio"><input type="radio" name="mode" value="manual"> La cerere, din butonul „Cere sugestie”</label>
+        </fieldset>
+      </section>
+
+      <div class="buttons">
+        <button type="submit" class="primary" id="save">Salvează</button>
+        <button type="button" id="test">Testează conexiunea</button>
+      </div>
+      <p id="status" class="status" role="status" hidden></p>
+    </form>
+
+    <section class="card info">
+      <h2>Compatibilitate WhatsApp Web</h2>
+      <p>Starea se vede în subsolul panoului din WhatsApp Web: „Compatibilitate WhatsApp Web: ok” sau „de verificat”. Un clic pe text arată ce elemente ale paginii nu au fost găsite.</p>
+      <h2>Confidențialitate</h2>
+      <p>Extensia citește doar conversația deschisă de dvs. și trimite conținutul ei doar la adresa de mai sus. Nu trimite mesaje, nu apasă „Trimite” și nu deschide conversații.</p>
+    </section>
+  </main>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

@@ -47,6 +47,12 @@ class ConversationState(BaseModel):
     last_suggestion_id: str | None = None
     payment_links: dict[str, str] = Field(default_factory=dict)   # quote_id -> link deja creat
 
+    manual_since: datetime | None = None
+    last_message_at: datetime | None = None
+    first_inbound_at: datetime | None = None
+    first_reply_at: datetime | None = None
+    first_offer_at: datetime | None = None
+
 
 class KnowledgeGap(BaseModel):
     """O intrebare pentru care baza de cunostinte nu a avut raspuns aprobat."""
@@ -56,11 +62,6 @@ class KnowledgeGap(BaseModel):
     question: str      # mesajul clientului
     query: str         # ce a cautat modelul
     at: datetime
-    manual_since: datetime | None = None
-    last_message_at: datetime | None = None
-    first_inbound_at: datetime | None = None
-    first_reply_at: datetime | None = None
-    first_offer_at: datetime | None = None
 
 
 class LoggedMessage(BaseModel):
