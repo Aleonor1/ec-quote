@@ -1,21 +1,21 @@
 ---
 id: story-11
-title: "Site chat channel API"
+title: "Site chat channel API hardened for a public browser"
 effort: MEDIUM
 epic: EPIC-1
 depends_on: [story-3, story-4]
-shared_files: [ec_quote/api/main.py, ec_quote/api/schemas.py, ec_quote/api/security.py]
+shared_files: [ec_quote/api/app.py, ec_quote/api/schemas.py, ec_quote/api/security.py, ec_quote/config.py]
 track: full
 models: {implementer: large, qa: standard, ui: none, review: large}
 ---
 
-# story-11: Site chat channel API
+# story-11: Site chat channel API hardened for a public browser
 
 **Repository:** ec-quote · **Epic:** [EPIC-1](epic-1-price-and-offer.md) · **Depends on:** story-3, story-4
 
 ## Summary
 
-The site chat is the first channel. A browser cannot hold `EC_QUOTE_INBOUND_SECRET`, so the browser talks to the storefront App Proxy, the calculator app relays to ec-quote with the secret (story-12), and ec-quote identifies the visitor by a signed session token it issued. This story adds the three endpoints the relay calls: start a session, send a message and get the replies, and read the conversation again after a page reload. Replies are the same `OutboundAction` list every channel gets, with images as URLs the browser can load.
+The site chat is the first channel. The scaffold already serves it from `ec_quote/api/app.py`: `POST /v1/chat/session`, `POST /v1/chat/message`, `POST /v1/chat/upload`, `GET /v1/chat/poll` and `GET /v1/media/{token}`, with HMAC signed session and media tokens, rate limits, and two ways in: directly from the browser under CORS (`EC_QUOTE_CORS_ORIGINS`), or relayed by a trusted proxy that adds the inbound secret and the visitor's IP (`chat_require_secret`, `x-ecquote-client-ip`). A browser never holds the inbound secret in either mode. This story makes those endpoints safe to expose to the internet, connects them to the real engine and the durable store, lets a reloaded page get its conversation back, and writes the wire contract the theme block (story-13) and the optional proxy (story-12) are built against.
 
 ## User Story
 
@@ -23,30 +23,32 @@ As a visitor, I want to ask for a price in the chat on the site and keep my conv
 
 ## Scope
 
-**In:** `ec_quote/api/site_chat.py` (new router), `ec_quote/api/schemas.py`, `ec_quote/api/security.py` (`Signer` for session and media tokens), `ec_quote/api/main.py` (mount), `ec_quote/api/texts.py` (greeting), `tests/api/test_site_chat.py`, `docs/site-chat-contract.md` (the wire contract story-12 implements).
+**In:** `ec_quote/api/app.py` (the chat and media routes, a conversation history route), `ec_quote/api/schemas.py`, `ec_quote/api/security.py`, `ec_quote/api/store.py` (outbox for polled actions on the durable store of story-3), `ec_quote/api/texts.py` (greeting), `ec_quote/config.py` (chat settings), `tests/api/test_chat.py`, `tests/api/test_media_approvals.py`, `docs/site-chat-contract.md` (new, the wire contract).
 
-**Out:** the App Proxy route (story-12) and the theme block (story-13); file upload (the browser uploads through the calculator app's existing storefront upload route and sends the resulting URL; story-19 consumes it); push notifications; WhatsApp.
+**Out:** the theme block (story-13); the App Proxy relay (story-12); the demo page under `ec_quote/api/static/` beyond keeping it working with `EC_QUOTE_DEMO=1`; storing uploads in R2 (story-19); WhatsApp.
 
 ## Acceptance Criteria
 
-1. `POST /v1/site/sessions` with the inbound secret returns `{session_token, expires_at, greeting}`; the token is an HMAC signed payload with a random session id and expiry; the greeting is the fixed Romanian text and, with the default of EPIC-1 D7, says the assistant is automated.
-2. `POST /v1/site/messages` with the secret, a valid token, a client message id and text (or a `button_id`) returns `{actions: [...]}`; the engine is called with `Contact(channel="site", key=<session id>)`.
-3. A missing, malformed, expired or tampered token answers 401 `invalid_session` and the engine is not called; a token signed for media cannot be used as a session token (purpose is part of the signature).
-4. The same client message id sent twice returns the same actions and the engine runs once.
-5. `GET /v1/site/conversation` returns the stored messages and actions of the session in order, so a reloaded page can redraw the thread; it returns nothing of any other session.
-6. Image actions carry `image_url`: a path on ec-quote with a media token that expires, served with the right content type; an expired or wrong token answers 404; the URL contains no file system path.
-7. A contact given in the chat (name, phone, email through a dedicated action, not free text parsing by code) is stored on the `Contact`; the session id remains the key.
-8. Attachments are accepted only as URLs; each goes through the fetcher of story-4 (allow listed host), otherwise the message is answered with the fixed "nu am putut citi fișierul" text.
-9. Rate limits: per session and per relayed client IP (header set by the relay), 429 with `Retry-After`; `max_offers_per_contact_per_day` applies per session.
-10. Without the inbound secret every endpoint answers 401, whatever the token.
-11. `docs/site-chat-contract.md` lists the three endpoints, fields, status codes and the action kinds with one example each; a test parses its JSON examples against the pydantic schemas.
+1. `POST /v1/chat/session` returns `{session_token, expires_at, greeting}`; the token is an HMAC signed payload with a random session id and an expiry; the greeting is the fixed Romanian text and, with the default of EPIC-1 D7, says the assistant is automated. Session creation is rate limited per client IP.
+2. `POST /v1/chat/message` with a valid token, a client `message_id` and text or a `button_id` returns the actions; the engine is called with `Contact(channel="site", key=<session id>)`.
+3. A missing, malformed, expired or tampered token answers 401 (`session_invalid` or `session_expired`) and the engine is not called; a media token is refused as a session token and the reverse (the purpose is part of the signing key).
+4. The same `message_id` sent twice returns the same actions and the engine runs once, also across a restart (story-3 `claim_inbound`).
+5. `GET /v1/chat/history` (new) returns the stored customer messages and actions of the session in order, so a reloaded page can redraw the thread; it returns nothing of any other session; `GET /v1/chat/poll` keeps returning only actions not yet delivered.
+6. Direct mode: with `EC_QUOTE_CORS_ORIGINS` set to the shop's origin, a preflight and a request from that origin succeed and from any other origin carry no CORS allow header; no route allows credentials (cookies); the inbound secret is never needed by the browser.
+7. Proxy mode: with `chat_require_secret` on, every chat route answers 401 without `x-ecquote-secret`, and rate limits use `x-ecquote-client-ip`; that header is ignored when the secret is absent.
+8. `POST /v1/chat/upload` accepts one file up to the configured size, decides the type from the bytes (`ec_quote/files/sniff.py`), stores it under the session's directory in `EC_QUOTE_DATA_DIR` with a generated name, and passes it to the engine as an `Attachment`; a larger file answers 413, a type outside the allowed set answers 415 or 422, and in both cases nothing remains on disk.
+9. Image actions carry `image_url` under `/v1/media/{token}`: the token expires, resolves only to a file under the data directory, and an expired, tampered or path escaping token answers 404; the URL contains no file system path and the response has no directory listing.
+10. A slow turn does not hang the request: beyond the configured time the response is a "se calculează" text and the result arrives through `poll`; a test with a slow fake engine shows both.
+11. Rate limits per IP, per session, per upload and per poll answer 429 with `Retry-After`; `max_offers_per_contact_per_day` from `Rules` applies per session.
+12. A session can state a name, phone or email through explicit fields of the message schema (not parsed from free text by code); they are stored on the `Contact`, validated (phone normalizable to E.164, email syntax), and the session id stays the key.
+13. `docs/site-chat-contract.md` lists every chat and media endpoint, its fields, status codes and error codes, and each action kind with one JSON example; a test validates each example against the pydantic schemas.
 
 ## Technical Notes
 
-- Request and response are synchronous: the reply to a message carries the actions. A slow turn (model plus calculator) is bounded by a timeout after which the reply is a "se calculează" text and the result is fetched by `GET /v1/site/conversation`.
-- Token secrets are derived from `Settings.signing_key(purpose)`.
-- `OutboundAction.image_path` stays internal; the API maps it to a URL. If `ec_quote/contracts.py` gains `image_url`, do it here and say so in the pull request.
+- Token keys come from `Settings.signing_key(purpose)`; rotating `EC_QUOTE_INBOUND_SECRET` invalidates sessions, which is acceptable.
+- Which transport production uses (direct with CORS, or the calculator app's App Proxy) is EPIC-1 D2, an owner decision. Both must pass these criteria; the block of story-13 works with either.
+- `OutboundAction.image_path` stays internal; the API maps it to `image_url`.
 
 ## Dependencies
 
-story-3 (idempotency, stored thread), story-4 (auth, fetcher, limits).
+story-3 (idempotency, stored thread), story-4 (auth, limits, log hygiene).

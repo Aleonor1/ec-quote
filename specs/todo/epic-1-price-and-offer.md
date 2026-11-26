@@ -32,7 +32,7 @@ The site chat is the first channel because it needs nothing from Meta. WhatsApp 
 
 ## Scope
 
-**In:** price parity audit; handoff rules; outbound guard; offer composition; Draft Order checkout; the site chat channel (ec-quote endpoints, the App Proxy route and the theme block in the calculator app); lead and handoff delivery to the CRM; paid order tracking; follow up scheduler; metrics and the weekly audit report.
+**In:** price parity audit; handoff rules; outbound guard; offer composition; Draft Order checkout; the site chat channel (ec-quote endpoints, the App Proxy route and the theme block in the calculator app); lead and handoff delivery to the CRM; paid order tracking (Draft Order status sweep and the CRM's paid event; no Shopify webhook in ec-quote); follow up scheduler; metrics and the weekly audit report.
 
 **Later:** A/B of question wording; incentive in the follow up (owner decision); English.
 
@@ -44,7 +44,7 @@ The site chat is the first channel because it needs nothing from Meta. WhatsApp 
 - Guard: `ec_quote/agent/guard.py` checks model text; a failed check never reaches the customer.
 - Handoff: decided by code on state and rules (`ec_quote/agent/rules.py`), not by the model. The model can only request `customer_asked`, `complaint`, `special_terms` and `not_understood`; the code confirms.
 - Checkout: `ShopifyCheckout` (`ec_quote/integrations/shopify.py`), idempotent per offer.
-- Site chat: browser to the storefront App Proxy to the calculator app to ec-quote. The browser holds only a signed session token (`ec_quote/api/security.py::Signer`).
+- Site chat: the endpoints exist in `ec_quote/api/app.py` (`/v1/chat/session`, `message`, `upload`, `poll`, `/v1/media/{token}`). The browser holds only a signed session token (`ec_quote/api/security.py::Signer`) and reaches them directly under CORS or through the calculator app's App Proxy (D2).
 - During the test period the chat block is visible only with a preview parameter; making it public is an EPIC-4 decision.
 
 ### Integrations
@@ -61,7 +61,7 @@ The site chat is the first channel because it needs nothing from Meta. WhatsApp 
 | # | Decision | Chosen | Why | Bucket |
 | --- | --- | --- | --- | --- |
 | D1 | Who decides a handoff | Code, from rules and state | The model must not decide policy | Decided |
-| D2 | How the browser reaches ec-quote | Through the calculator app's App Proxy | A browser cannot hold a secret; same origin, no CORS | Decided |
+| D2 | How the browser reaches ec-quote | Recommended to start: direct, CORS for the shop's origin, signed sessions (what the scaffold and the bridge spec assume). Alternative: the calculator app's App Proxy (same origin, ec-quote not public, one more hop and a dependency on Railway) | Both are built into the API; the block works with either | Reserved, open |
 | D3 | Checkout object | Draft Order on the permanent variant with `priceOverride` | Orders look like site orders to the CRM and production | Decided |
 | D4 | Value threshold | `handoff_value_threshold_ron_ex_vat` = 3000 | Owner's plan | Reserved, to confirm |
 | D5 | Validity and follow up incentive | 7 days, no incentive | Owner's plan lists it as open | Reserved, open |
@@ -86,9 +86,9 @@ The site chat is the first channel because it needs nothing from Meta. WhatsApp 
 | [story-8](story-8-outbound-guard-and-conversation-evals.md) | Outbound guard and the conversation evaluation set | ec-quote | story-2 | 1 | HIGH |
 | [story-9](story-9-offer-composition-tiers-validity-text-and-image.md) | Offer composition: tiers, validity, text and image | ec-quote | story-2 | 1 | MEDIUM |
 | [story-10](story-10-draft-order-checkout-exact-price.md) | Draft Order checkout at the exact calculator price | ec-quote | story-2 | 1 | HIGH |
-| [story-11](story-11-site-chat-channel-api.md) | Site chat channel API | ec-quote | story-3, story-4 | 1 | MEDIUM |
-| [story-12](story-12-calculator-app-quote-chat-app-proxy-route.md) | [calculator-app] Quote chat App Proxy route | etichetecreative-calculator-app | story-11 | 2 | MEDIUM |
-| [story-13](story-13-calculator-app-quote-chat-theme-block.md) | [calculator-app] Quote chat theme block | etichetecreative-calculator-app | story-12 | 3 | HIGH |
+| [story-11](story-11-site-chat-channel-api.md) | Site chat channel API hardened for a public browser | ec-quote | story-3, story-4 | 1 | MEDIUM |
+| [story-12](story-12-calculator-app-quote-chat-app-proxy-route.md) | [calculator-app] Quote chat App Proxy relay (only if D2 is proxy) | etichetecreative-calculator-app | story-11 | 2 | MEDIUM |
+| [story-13](story-13-calculator-app-quote-chat-theme-block.md) | [calculator-app] Quote chat theme block | etichetecreative-calculator-app | story-11 | 2 | HIGH |
 | [story-14](story-14-crm-lead-and-handoff-delivery.md) | Lead and handoff delivery to the CRM | ec-quote | story-7 | 2 | MEDIUM |
 | [story-15](story-15-paid-order-tracking.md) | Paid order tracking (orders/paid) | ec-quote | story-3, story-10 | 2 | MEDIUM |
 | [story-16](story-16-follow-up-scheduler.md) | Follow up scheduler at 24 and 72 hours | ec-quote | story-3, story-9 | 2 | MEDIUM |
@@ -98,9 +98,9 @@ The site chat is the first channel because it needs nothing from Meta. WhatsApp 
 
 ## Hand-over
 
-- Owner: decisions D4 to D8.
+- Owner: decisions D2 and D4 to D8.
 - Owner: a Shopify custom app token with `write_draft_orders`, `read_products`, `read_orders`.
-- Owner: merge and deploy of the two calculator app stories (`shopify app deploy --allow-updates` for the theme block), and the env var with the ec-quote base URL and inbound secret on Railway.
+- Owner: merge and deploy of the calculator app stories (`shopify app deploy --allow-updates` for the theme block). With the proxy transport, also the ec-quote base URL and inbound secret on Railway; with the direct transport, the shop's origin in `EC_QUOTE_CORS_ORIGINS` on the VPS.
 
 ## References
 

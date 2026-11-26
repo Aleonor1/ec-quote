@@ -17,7 +17,7 @@ ec-quote does not own the WhatsApp number and receives nothing from Meta. The CR
 
 Exists in the CRM (verified in code): the Meta webhook with signature and anti replay (`services/inbox/src/routes/whatsappWebhook.ts`), Coexistence echoes and history (`whatsappCoexistenceService.ts`, story-197), the inbox and lead matching, `sendText`, `sendImage` by URL and `sendTemplate` (`packages/integrations/src/whatsappBusinessClient.ts`), the `ai_auto` send path with the 24 hour window, kill switch, caps and audit (`conversationSendService.ts`), templates with a monthly cap (`whatsappTemplateService.ts`), AI drafts with approve, edit, reject (`aiReplyDraftService.ts`), handover (`inboxHandoverService.ts`).
 
-Missing: the bridge itself, downloading inbound media from Meta (only `mediaId` and `mediaMime` are stored), interactive button messages, an approval surface for an ec-quote offer, a template for the 72 hour follow up.
+Missing: the bridge itself, downloading inbound media from Meta (only `mediaId` and `mediaMime` are stored), interactive button messages, an approval surface for an ec-quote offer, a template for follow ups.
 
 ## Scope
 
@@ -25,18 +25,18 @@ Missing: the bridge itself, downloading inbound media from Meta (only `mediaId` 
 
 ## Story list
 
-Titles and one line each. Full specs are written by `/rnd` or `/create-spec` when EPIC-1 and EPIC-2 are merged. CRM stories get their ids in the CRM repository (next free id there is story-370 on 2026-11-26).
+Titles and one line each. `crm-ec-quote-bridge.md` already specifies rows 1, 2, 3, 5, 6 and 7 and the paid order link as one HIGH story for the CRM; split it there if it is too large for one pull request. The remaining rows get full specs from `/rnd` or `/create-spec` when EPIC-1 and EPIC-2 are merged. CRM stories get their ids in the CRM repository (next free id there is story-370 on 2026-11-26).
 
 | # | Title | Repository | One line |
 | --- | --- | --- | --- |
 | 1 | [crm] Bridge outbound: forward inbound WhatsApp messages to ec-quote | crm-etichete-creative | After a message is stored, post an `InboundMessage` to ec-quote with the shared secret, with retries and an idempotency key; never block the webhook's 200. |
-| 2 | [crm] Download inbound media and hand it over as a URL | crm-etichete-creative | Fetch the file by `mediaId` from the Graph API, store it through the calculator app's `upload-url`, pass the URL in `attachments`. |
+| 2 | [crm] Download inbound media and hand it over as a URL | crm-etichete-creative | Fetch the file by `mediaId` from the Graph API and serve it to ec-quote at a signed `GET /api/ec-quote/media/:id`, passed as the attachment `url`. |
 | 3 | [crm] Deliver ec-quote actions through the `ai_auto` send path | crm-etichete-creative | `text` and `image` actions go through `conversationSendService` so the 24 hour window, kill switch, caps, DNC and audit apply unchanged. |
 | 4 | [crm] Interactive reply buttons, with a numbered text fallback | crm-etichete-creative | Add the Cloud API interactive message to `whatsappBusinessClient`; parse `button_reply` into `button_id` on inbound. |
 | 5 | [crm] Staff echo puts the conversation on manual | crm-etichete-creative | A `smb_message_echoes` message or a reply sent from the inbox is forwarded with `from_staff: true`. |
 | 6 | [crm] Approval card for a pending offer in the inbox | crm-etichete-creative | A `pending_approval` action becomes a draft with the offer image and price; Approve, Edit and Reject call ec-quote; an edit is recorded as "approved with changes". |
 | 7 | [crm] Handoff from ec-quote raises a handover with the summary | crm-etichete-creative | A `handoff` action calls `raiseHandover` with the reason code and the engine's summary, and assigns the conversation. |
-| 8 | [crm] Template for the 72 hour follow up | crm-etichete-creative | A Meta approved utility template with the offer reference, sent by the CRM under its monthly cap when ec-quote asks for it. |
+| 8 | [crm] Template for follow ups outside the 24 hour window | crm-etichete-creative | A Meta approved utility template with the offer reference, sent by the CRM under its monthly cap when ec-quote asks for it. With the current `follow_up_hours` both reminders need it. |
 | 9 | [crm] Ad source on the lead | crm-etichete-creative | The click to WhatsApp referral of the first message is stored on the lead and passed as `Contact.ad_source`, for the ec-agency report. |
 | 10 | WhatsApp channel adapter in ec-quote | ec-quote | Channel specifics in one place: 20 character button titles, image by URL, text length, the window state received from the CRM. |
 | 11 | Approve, edit and reject endpoints hardened | ec-quote | `Engine.approve` and `reject` are idempotent, expire with the offer, and record who decided and whether the text changed. |
@@ -47,7 +47,7 @@ Titles and one line each. Full specs are written by `/rnd` or `/create-spec` whe
 ## Decisions reserved for the owner
 
 - Who approves offers during the two weeks, and in which hours. Outside those hours an offer waits, and the customer is told when a colleague answers.
-- The text of the 72 hour template, submitted to Meta for approval.
+- The text of the follow up template, submitted to Meta for approval, and whether the first reminder moves inside the free window.
 - Whether the assistant introduces itself as automated in the first WhatsApp message (EPIC-1 D7).
 
 ## Hand-over

@@ -15,7 +15,7 @@ models: {implementer: large, qa: standard, ui: none, review: large}
 
 ## Summary
 
-Every conversation that reaches a price or a handoff must exist in the CRM, where staff work: a lead with what was asked, the offer and the payment link, updated as the conversation moves, and a handoff that lands in front of a person with the summary. `ec_quote/integrations/crm.py` implements `CrmPort` and `HandoffPort` against the bridge contract. This story proves that adapter on recorded fixtures of the contract, makes delivery survive a CRM outage through an outbox with retries, and guarantees one lead per contact.
+Every conversation that reaches a price or a handoff must exist in the CRM, where staff work: a lead with what was asked, the offer and the payment link, updated as the conversation moves, and a handoff that lands in front of a person with the summary. `CrmClient` in `ec_quote/integrations/crm.py` implements `CrmPort` and `HandoffPort` against the bridge contract (`PUT /api/ec-quote/leads`, `POST /api/ec-quote/handoffs`, bearer token, `Idempotency-Key`), with `tests/integrations/test_crm.py` pinning paths, headers and bodies. This story proves that adapter on recorded fixtures of the contract, makes delivery survive a CRM outage through an outbox with retries, and guarantees one lead per contact.
 
 ## User Story
 
@@ -23,13 +23,13 @@ As a staff member, I want every chat that asked for a price to appear in the CRM
 
 ## Scope
 
-**In:** `ec_quote/integrations/crm.py`, `ec_quote/integrations/errors.py`; `ec_quote/integrations/outbox.py` (new: durable queue in the SQLite store, retry schedule); `ec_quote/agent/store.py` (outbox table through the migration of story-3); `ec_quote/api/main.py` (outbox worker start and stop); `tests/integrations/test_crm.py`, `tests/integrations/test_outbox.py`, `tests/integrations/fixtures/crm/*.json`.
+**In:** `ec_quote/integrations/crm.py`, `ec_quote/integrations/errors.py`; `ec_quote/integrations/outbox.py` (new: durable queue in the SQLite store, retry schedule); `ec_quote/agent/store.py` (outbox table through the migration of story-3); `ec_quote/api/main.py` and `app.py` (outbox worker start and stop in the lifespan); `tests/integrations/test_crm.py`, `tests/integrations/test_outbox.py`, `tests/integrations/fixtures/crm/*.json`.
 
 **Out:** the CRM side of the contract (EPIC-3 and the bridge spec); WhatsApp delivery of customer messages; the approval card in the inbox.
 
 ## Acceptance Criteria
 
-1. `upsert_lead` sends the fields the bridge contract defines for a contact, summary, quote, checkout and status, authenticated with `CRM_API_SECRET`; the request body validates against the contract's schema fixture.
+1. `upsert_lead` sends the fields the bridge contract defines for a contact, summary, quote, checkout and status, authenticated with `CRM_API_SECRET` as a bearer token; the request body validates against the contract's schema fixture.
 2. Statuses sent over a conversation's life are from the closed list of the contract (for example asked, offered, link sent, paid, handed off, lost); the same status for the same lead and offer is sent once.
 3. Two `upsert_lead` calls for the same contact return the same lead id; the idempotency key is derived from channel and contact key, and the offer id when present.
 4. `handoff` sends the reason code, the staff summary of story-7 and the lead id; it is sent once per handoff event even when retried.

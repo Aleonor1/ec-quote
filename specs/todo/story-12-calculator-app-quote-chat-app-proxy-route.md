@@ -1,6 +1,6 @@
 ---
 id: story-12
-title: "[calculator-app] Quote chat App Proxy route"
+title: "[calculator-app] Quote chat App Proxy relay (only if the owner picks proxy transport)"
 effort: MEDIUM
 epic: EPIC-1
 depends_on: [story-11]
@@ -9,45 +9,45 @@ track: full
 models: {implementer: large, qa: standard, ui: none, review: large}
 ---
 
-# story-12: [calculator-app] Quote chat App Proxy route
+# story-12: [calculator-app] Quote chat App Proxy relay
 
-**Repository:** `etichetecreative-calculator-app` (NOT ec-quote) · **Epic:** [EPIC-1](epic-1-price-and-offer.md) · **Depends on:** story-11 (its wire contract, `docs/site-chat-contract.md` in ec-quote)
+**Repository:** `etichetecreative-calculator-app` (NOT ec-quote) · **Epic:** [EPIC-1](epic-1-price-and-offer.md) · **Depends on:** story-11 (its wire contract, `docs/site-chat-contract.md` in ec-quote) · **Conditional:** ship only if EPIC-1 D2 is answered "App Proxy". With "direct", this story is closed unbuilt.
 
 Copy this spec into the calculator app as `docs/spec-quote-chat-proxy.md` before shipping it there. All paths below are in that repository.
 
 ## Summary
 
-The site chat runs in the visitor's browser on etichetecreative.ro. It must reach ec-quote without a secret in the browser and without cross origin requests. The calculator app already serves the storefront through the Shopify App Proxy (`/apps/calculator/*` to `/api/storefront/*`, authenticated with `authenticate.public.appProxy`). This story adds one proxy route that relays the three site chat calls to ec-quote server to server with the inbound secret, and nothing else: no business logic, no storage, no model.
+ec-quote can serve the site chat to the browser in two ways: directly under CORS, or behind a trusted relay (its proxy mode: `x-ecquote-secret` plus `x-ecquote-client-ip`). With the relay, the browser talks only to etichetecreative.ro: the calculator app already serves the storefront through the Shopify App Proxy (`/apps/calculator/*` to `/api/storefront/*`, `authenticate.public.appProxy`), so the chat becomes same origin, ec-quote's address stays private, and every request is one Shopify signed for the shop. The cost is one more hop and a dependency on the calculator app being up. This story adds that relay and nothing else: no business logic, no storage, no model.
 
 ## User Story
 
-As a visitor, I want the chat on the site to work like any other part of the page, and as the owner I want the key to the quoting service to stay on the server.
+As the owner, I want the chat to reach the quoting service only through my shop's own address, so that the service is not open to the whole internet.
 
 ## Scope
 
-**In:** `app/routes/api.storefront.quote-chat.$op.ts` (`session`, `message`, `conversation`); `app/utils/quote-chat.server.ts` (relay client, timeouts, error mapping, per IP rate limit); `tests/routes/api.storefront.quote-chat.test.ts`, `tests/utils/quote-chat.server.test.ts`; `.env.example` or its equivalent (`EC_QUOTE_BASE_URL`, `EC_QUOTE_INBOUND_SECRET`); `features/application-architecture.md` (route list), `CLAUDE.md` (one line under the storefront API), `CHANGELOG.md`.
+**In:** `app/routes/api.storefront.quote-chat.$op.ts` (`session`, `message`, `upload`, `poll`, `history`, and `media/<token>`); `app/utils/quote-chat.server.ts` (relay client, timeouts, error mapping, per IP rate limit); `tests/routes/api.storefront.quote-chat.test.ts`, `tests/utils/quote-chat.server.test.ts`; the env example (`EC_QUOTE_BASE_URL`, `EC_QUOTE_INBOUND_SECRET`); `features/application-architecture.md` (route list), `CLAUDE.md` (one line under the storefront API), `CHANGELOG.md`.
 
-**Out:** the theme block (story-13); any change to pricing, upload or studio routes; relaying file bytes (the browser uploads through the existing `api.storefront.upload-file` route and sends the URL).
+**Out:** the theme block (story-13, which only changes its base path setting); any change to pricing, upload or studio routes; any rule about who may chat or what an offer is.
 
 ## Acceptance Criteria
 
-1. `POST /api/storefront/quote-chat/session`, `POST .../message` and `GET .../conversation` answer only to requests that pass `authenticate.public.appProxy`; a direct call without a valid proxy signature is refused as the other storefront routes refuse it.
-2. Each call is relayed to `EC_QUOTE_BASE_URL` with the header carrying `EC_QUOTE_INBOUND_SECRET`, the body unchanged, and the visitor's IP in the header the contract names; the response body and status are returned unchanged for 200, 401 `invalid_session`, 422 and 429 (with `Retry-After`).
-3. The secret and the ec-quote base URL never appear in a response body, a response header or a log line; a test scans all three for the test secret.
-4. With `EC_QUOTE_BASE_URL` or `EC_QUOTE_INBOUND_SECRET` unset, every operation answers 503 `{error: "chat_unavailable"}` and makes no outbound request; the app starts normally.
-5. An ec-quote timeout (over the configured limit), a connection error or a 5xx answers 502 `{error: "chat_unavailable", retryable: true}` with no stack trace.
-6. An operation name other than the three answers 404; a wrong method answers 405; a body over 64 KB answers 413 without relaying.
-7. The session token is passed through as the contract says (request header or body) and is never set as a cookie by this route.
-8. A per IP limit (requests per minute, constant in one place) answers 429 before relaying.
-9. Existing storefront routes and their tests are unchanged and pass; `npm run lint`, `npm run typecheck` and `npm test` are green.
+1. Each operation answers only to requests that pass `authenticate.public.appProxy`; a direct call without a valid proxy signature is refused as the other storefront routes refuse it.
+2. Each call is relayed to `EC_QUOTE_BASE_URL` with `x-ecquote-secret`, the visitor's IP in `x-ecquote-client-ip`, the session token in `x-ecquote-session`, and the body unchanged (JSON, or the multipart stream for `upload`); the response body and status are returned unchanged for 200, 401, 413, 422 and 429 (with `Retry-After`).
+3. `media/<token>` streams the image from ec-quote with its content type and a private cache header; `image_url` values in relayed actions are rewritten to the proxy path, so the browser never sees ec-quote's host.
+4. The secret and the ec-quote base URL never appear in a response body, a response header or a log line; a test scans all three for the test values.
+5. With `EC_QUOTE_BASE_URL` or `EC_QUOTE_INBOUND_SECRET` unset, every operation answers 503 `{error: "chat_unavailable"}` and makes no outbound request; the app starts normally.
+6. An ec-quote timeout, a connection error or a 5xx answers 502 `{error: "chat_unavailable", retryable: true}` with no stack trace.
+7. An unknown operation answers 404; a wrong method 405; a JSON body over 64 KB or an upload over 25 MB answers 413 without relaying.
+8. A per IP limit (requests per minute, one constant) answers 429 before relaying.
+9. Query parameters added by the App Proxy (`shop`, `signature`, `timestamp`, `path_prefix`, `logged_in_customer_id`) are not forwarded.
+10. Existing storefront routes and their tests are unchanged and pass; `npm run lint`, `npm run typecheck` and `npm test` are green.
 
 ## Technical Notes
 
-- App Proxy requests are signed by Shopify; follow `app/routes/api.storefront.upload-file.ts` for the authentication call and the response helpers.
-- Use the platform `fetch` with an `AbortController` timeout; no new dependency.
-- The App Proxy strips cookies and adds its own query parameters; do not forward them to ec-quote.
-- This is a relay: if a rule is needed (who may chat, what an offer is), it belongs in ec-quote.
+- Follow `app/routes/api.storefront.upload-file.ts` for the authentication call and the response helpers. Platform `fetch` with an `AbortController` timeout; no new dependency.
+- The App Proxy does not pass cookies and may strip `Authorization`; that is why ec-quote accepts `x-ecquote-session`.
+- Measure before choosing this transport: a chat turn can take several seconds (model plus calculator). ec-quote answers slow turns with a "se calculează" text and `poll`, which keeps each proxied request short.
 
 ## Hand-over
 
-Owner: `EC_QUOTE_BASE_URL` and `EC_QUOTE_INBOUND_SECRET` set on the `calculator-app` Railway service (dashboard, values never in the repository); merge to `master`; `npm run check:deploy` and `npm run e2e:smoke` after deploy.
+Owner: decision EPIC-1 D2. If proxy: `EC_QUOTE_BASE_URL` and `EC_QUOTE_INBOUND_SECRET` on the `calculator-app` Railway service (dashboard, values never in the repository), `chat_require_secret` on in ec-quote, merge to `master`, `npm run check:deploy` and `npm run e2e:smoke` after deploy.

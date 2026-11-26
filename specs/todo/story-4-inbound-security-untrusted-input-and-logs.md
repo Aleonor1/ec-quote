@@ -4,7 +4,7 @@ title: "Inbound security, untrusted input and logs without personal data"
 effort: MEDIUM
 epic: EPIC-0
 depends_on: [story-2]
-shared_files: [ec_quote/api/main.py, ec_quote/agent/prompts.py]
+shared_files: [ec_quote/api/app.py, ec_quote/agent/prompts.py]
 track: full
 models: {implementer: large, qa: standard, ui: none, review: large}
 ---
@@ -23,13 +23,13 @@ As the owner, I want a stranger's message to be unable to make the assistant mis
 
 ## Scope
 
-**In:** `ec_quote/api/security.py`, `ec_quote/api/fetcher.py`, `ec_quote/api/ratelimit.py`, `ec_quote/api/logutil.py`, `ec_quote/api/main.py` (dependencies and limits); `ec_quote/agent/prompts.py` and `ec_quote/agent/model.py` (data delimiting); `tests/api/test_auth.py`, `test_fetcher.py`, `test_ratelimit.py`, `test_logs_pii.py`, `tests/agent/test_injection.py`.
+**In:** `ec_quote/api/security.py`, `ec_quote/api/fetcher.py`, `ec_quote/api/ratelimit.py`, `ec_quote/api/logutil.py`, `ec_quote/api/app.py` (dependencies and limits); `ec_quote/agent/prompts.py` and `ec_quote/agent/model.py` (data delimiting); `tests/api/test_auth.py`, `test_fetcher.py`, `test_ratelimit.py`, `test_logs_pii.py`, `tests/agent/test_injection.py`.
 
 **Out:** the browser session tokens of the site chat (story-11); Shopify webhook HMAC (story-15); file content checks (story-18).
 
 ## Acceptance Criteria
 
-1. Every endpoint except `GET /health` answers 401 without the secret header and with a wrong secret, 200 with the right one; the comparison is constant time (`secrets_equal`); with `EC_QUOTE_INBOUND_SECRET` empty the service does not start.
+1. Every service endpoint (`/v1/inbound`, `/v1/approvals/*`) answers 401 without `x-ecquote-secret` and with a wrong secret, 200 with the right one; the chat endpoints are covered by story-11; the comparison is constant time (`secrets_equal`); with `EC_QUOTE_INBOUND_SECRET` empty the service does not start.
 2. A request body over the configured size, an `InboundMessage` with more than the configured number of attachments, or a text over the configured length is answered 413 or 422 without reaching the engine.
 3. The fetcher downloads an attachment only when the URL is `https` and its host is in the configured allow list; for any other host, an IP literal, a host resolving to a private, loopback or link local address, a non default port, or user info in the URL it raises `FetchRefused` and makes no request.
 4. A redirect to another host is not followed; a response larger than the cap is aborted at the cap; a download slower than the timeout is aborted; each case yields an `unusable` file report with a stable problem code, never an exception out of the engine.
@@ -43,7 +43,7 @@ As the owner, I want a stranger's message to be unable to make the assistant mis
 
 - Limits are settings with safe defaults in `ec_quote/config.py` (they are technical limits, not policy); `max_offers_per_contact_per_day` comes from `Rules`.
 - Resolve the host once and connect to the resolved address to avoid DNS rebinding between the check and the request.
-- The allow list at launch: the public storage base URL from `GET /api/sync/calculator-config` (`settings.uploadPublicBaseUrl`) and, in EPIC-3, the CRM's media host.
+- The allow list at launch: the public storage base URL from `GET /api/sync/calculator-config` (`settings.uploadPublicBaseUrl`) and the CRM host, which serves WhatsApp media at signed URLs (bridge spec, section 3).
 
 ## Dependencies
 

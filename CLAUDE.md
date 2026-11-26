@@ -27,7 +27,7 @@ The skills pack gate applies to every pull request: all tests green, nothing ski
 
 ## Architecture
 
-Python 3.11+, FastAPI, pydantic v2, httpx, Pillow, PyMuPDF, the Anthropic SDK. Ports and adapters: `ec_quote/contracts.py` defines every port and data type; each package implements one port; `ec_quote/api/main.py` is the only place where real adapters are constructed.
+Python 3.11+, FastAPI, pydantic v2, httpx, Pillow, PyMuPDF, the Anthropic SDK. Ports and adapters: `ec_quote/contracts.py` defines every port and data type; each package implements one port; `ec_quote/api/main.py` is the composition root, the only place where real adapters are constructed and the clock is read.
 
 | Path | Role | Port |
 | --- | --- | --- |
@@ -35,11 +35,13 @@ Python 3.11+, FastAPI, pydantic v2, httpx, Pillow, PyMuPDF, the Anthropic SDK. P
 | `ec_quote/pricing/` | Client of the calculator sync API (`client.py`, `errors.py`); catalog cache; quantity tiers | `PricingPort` |
 | `ec_quote/files/` | Artwork inspection: type sniffing (`sniff.py`), DPI at final size, verdict | `FilePort` |
 | `ec_quote/mockup/` | Compositing on own photo templates; the single offer image | `MockupPort` |
-| `ec_quote/agent/` | The conversation engine: model loop, tool dispatch, state, handoff rules, shadow mode | `Engine` |
+| `ec_quote/agent/` | The conversation engine (`engine.py`): model loop, tools, state store, guard, offer texts, rules, shadow mode | `Engine` |
 | `ec_quote/integrations/` | Shopify Draft Order, CRM lead and handoff | `CheckoutPort`, `CrmPort`, `HandoffPort` |
-| `ec_quote/api/` | FastAPI app: inbound messages from the CRM and the site chat, approvals, health | none (composition root) |
+| `ec_quote/api/` | FastAPI app (`app.py`: `/v1/inbound`, `/v1/approvals/*`, `/v1/chat/*`, `/v1/media/*`, `/health`), composition root (`main.py`), demo widget (`static/`) | none |
+| `ec_quote/config.py` | `Settings` from environment, fails closed | |
 | `config/rules.json` | Every policy number and the approved material claims | |
-| `templates/` | Photo templates for mockups and their manifest | |
+| `templates/mockups/` | Photo templates for mockups and their manifests | |
+| `deploy/` | VPS deployment files | |
 | `tests/` | Mirrors `ec_quote/`; fakes for every port | |
 
 `ARCHITECTURE.md` is the orientation map (data flow, what already exists in the calculator app and the CRM). `docs/dev-rules.md` holds the development rules every story must respect.

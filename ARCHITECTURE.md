@@ -25,10 +25,10 @@ InboundMessage ──▶ Engine.handle ──▶ model loop (understand, ask)
 | --- | --- | --- |
 | `ec_quote/pricing/` | `PricingPort` | `client.py` (`CalculatorClient`: `X-Sync-Secret`, catalog TTL cache, one retry), `catalog.py`, `errors.py`, `fake.py` (`FakeCalculator` for tests) |
 | `ec_quote/files/` | `FilePort` | `sniff.py` (type from magic bytes), `checker.py` (`FileChecker`, never raises, no network), `problems.py` (stable problem codes) |
-| `ec_quote/mockup/` | `MockupPort` | `templates.py` (strict manifest, selection by context keywords), `warp.py`, `formatting.py`, bundled DejaVu fonts |
-| `ec_quote/agent/` | `Engine` | `model.py` (model loop), `guard.py` (checks amounts, percentages, deadlines, material claims in model text), `rules.py` (`Rules` from `config/rules.json`, business hours, production term), `store.py` (`ConversationStore`: SQLite and in memory; `claim_inbound` for idempotency; approvals) |
-| `ec_quote/integrations/` | `CheckoutPort`, `CrmPort`, `HandoffPort` | `shopify.py` (`ShopifyCheckout`: Draft Order on the product's permanent variant with `priceOverride` = calculator total, line properties from the calculator, `get_status`) |
-| `ec_quote/api/` | none | FastAPI composition root (`main.py`), `security.py` (constant time secret compare, HMAC signed tokens for chat sessions and media links) |
+| `ec_quote/mockup/` | `MockupPort` | `service.py`, `templates.py` (strict manifest, selection by context keywords), `warp.py`, `compose.py`, `offer.py` (the offer image, 1080x1350), `formatting.py`, bundled DejaVu fonts; templates under `templates/mockups/` |
+| `ec_quote/agent/` | `Engine` | `engine.py`, `model.py` (model loop), `tools.py`, `prompts.py`, `offer.py` (texts with numbers, composed by code), `guard.py` (checks amounts, percentages, deadlines, material claims in model text), `rules.py` (`Rules` from `config/rules.json`, business hours, production term), `store.py` (`ConversationStore`: SQLite and in memory; `claim_inbound` for idempotency; approvals) |
+| `ec_quote/integrations/` | `CheckoutPort`, `CrmPort`, `HandoffPort` | `shopify.py` (`ShopifyCheckout`: Draft Order on the product's permanent variant with `priceOverride` = calculator total, line properties from the calculator, `get_status`), `crm.py` (`CrmClient` over the bridge `/api/ec-quote/*`, bearer token, `Idempotency-Key`) |
+| `ec_quote/api/` | none | `app.py` (`create_app`: `POST /v1/inbound`, `POST /v1/approvals/{id}/approve` and `reject`, `POST /v1/chat/session`, `message`, `upload`, `GET /v1/chat/poll`, `GET /v1/media/{token}`, `GET /health`), `main.py` (composition root), `security.py` (constant time secret compare, HMAC signed session and media tokens), `fetcher.py`, `ratelimit.py`, `logutil.py`, `schemas.py`, `static/` (demo widget, only with `EC_QUOTE_DEMO=1`) |
 | `ec_quote/config.py` | | `Settings` from environment, fails closed, secrets as `SecretStr` |
 
 State: SQLite under `EC_QUOTE_DATA_DIR` (conversations, message log, approvals). No other datastore.
@@ -47,7 +47,7 @@ The original plan assumed more had to be built. Verified in code on 2026-11-26.
 | Calculator app | Production PDF from an approved proof | `app/utils/production-pdf.server.ts` (`buildProductionPdf`), `app/utils/bezier-fit.server.ts`, `app/utils/emboss-trace.js` | Exists on the server, but consumes cut paths; it does not compute them. |
 | Calculator app | Contur Studio as an isolated page for the CRM | `GET /crm-studio` (`app/routes/crm-studio.ts`, `app/utils/crm-studio.server.ts`, `app/crm-studio/bridge.js`) | Exists. An iframe page driven by `postMessage`; needs a browser. |
 | Calculator app | Storefront theme extension and App Proxy | `extensions/calculator/blocks/*.liquid`, `app/routes/api.storefront.*.ts` | Exists. No chat block and no chat proxy route yet. |
-| Calculator app | Order webhooks | `shopify.app.toml`: `orders/create`, `orders/fulfilled`, `orders/cancelled` | Exists. No `orders/paid` subscription. |
+| Calculator app | Order webhooks | `shopify.app.toml`: `orders/create`, `orders/fulfilled`, `orders/cancelled` | Exists. No `orders/paid` subscription. ec-quote learns about payment from the Draft Order status and from the CRM (story-15). |
 | CRM | Meta WhatsApp Cloud API webhook (signature, anti replay, per event isolation) | `services/inbox/src/routes/whatsappWebhook.ts` | Exists. |
 | CRM | Coexistence with the phone app: staff echoes, 180 day history import, contact names | `services/inbox/src/services/whatsappCoexistenceService.ts` (story-197) | Exists. |
 | CRM | Unified inbox, conversations, lead matching | `services/inbox/src/services/conversationService.ts`, `whatsappService.ts` (story-183, story-184) | Exists. |
@@ -85,9 +85,9 @@ ec-quote never talks to Meta. The CRM owns the number, the webhook, the 24 hour 
 
 ```
 Customer ─▶ Meta Cloud API ─▶ CRM  POST /api/whatsapp/webhook   (signature, anti replay, stored in the inbox)
-                                  │  bridge (EPIC-3, CRM): downloads the media, builds InboundMessage
+                                  │  bridge (EPIC-3, CRM): fetches the media from Meta, serves it at a signed URL, builds InboundMessage
                                   ▼
-                          ec-quote  inbound endpoint (EC_QUOTE_INBOUND_SECRET) ─▶ Engine.handle
+                          ec-quote  POST /v1/inbound (x-ecquote-secret) ─▶ Engine.handle
                                   │  returns OutboundAction[]
                                   ▼
                                CRM  text, image, buttons ─▶ conversationSendService (sentBy 'ai_auto')
@@ -98,25 +98,26 @@ Customer ─▶ Meta Cloud API ─▶ CRM  POST /api/whatsapp/webhook   (signatu
 ```
 
 - A message written by staff from the phone app arrives in the CRM as an echo (`smb_message_echoes`). The bridge forwards it with `from_staff: true`; the engine switches that conversation to manual for `manual_mode_quiet_hours`.
-- The follow up at 24 hours fits inside the customer service window. The one at 72 hours is outside it and needs an approved template, sent by the CRM under its monthly cap.
+- Follow ups: Meta's free window is 24 hours from the customer's last message, and the offer is sent after that message. So a reminder at 24 hours after the offer is already outside the window, like the one at 72 hours. Both need an approved template sent by the CRM under its monthly cap, unless the first reminder is moved earlier (owner decision, `follow_up_hours`).
 - The wire contract is `specs/todo/crm-ec-quote-bridge.md`.
 
 ## Data flow: site chat
 
 ```
-Browser (theme block in extensions/calculator) ─▶ https://etichetecreative.ro/apps/calculator/quote-chat/*
-        ─▶ calculator app App Proxy route (authenticate.public.appProxy) ─▶ ec-quote (EC_QUOTE_INBOUND_SECRET)
+Direct:  Browser (theme block in extensions/calculator) ─▶ ec-quote /v1/chat/*   (CORS for the shop's origin, signed session token)
+Proxy:   Browser ─▶ https://etichetecreative.ro/apps/calculator/quote-chat/* ─▶ calculator app (authenticate.public.appProxy)
+                 ─▶ ec-quote /v1/chat/*   (x-ecquote-secret, x-ecquote-client-ip, x-ecquote-session)
 ```
 
-The browser never holds a secret and never calls ec-quote directly. Files go to R2 through the existing storefront upload route and reach ec-quote as URLs on the storage host.
+The scaffold serves both transports; which one production uses is an owner decision (EPIC-1 D2). In neither does the browser hold a secret. Files are uploaded to `POST /v1/chat/upload`, kept under `EC_QUOTE_DATA_DIR`, and copied to R2 through the calculator app's `upload-url` (story-19). Images come back as expiring `/v1/media/{token}` links.
 
 ## Checkout and payment
 
-`create_checkout` creates a Shopify Draft Order: one unit of the product's permanent variant, `priceOverride` equal to `PriceQuote.total`, the calculator's `properties` as line attributes, the artwork URL, tags for the channel and ad source. The order is then read by the CRM and production like a site order. Paid orders are matched back to offers in story-15.
+`create_checkout` creates a Shopify Draft Order: one unit of the product's permanent variant, `priceOverride` equal to `PriceQuote.total`, the calculator's `properties` as line attributes, the artwork URL, tags for the channel and ad source. The order is then read by the CRM and production like a site order. Paid orders are matched back to offers in story-15 (Draft Order status sweep, plus the CRM's `POST /v1/orders/paid` once the bridge exists).
 
 ## Environment
 
-Names only, values come from the owner: `CALCULATOR_BASE_URL`, `CALCULATOR_SYNC_SECRET`, `ANTHROPIC_API_KEY`, `EC_QUOTE_MODEL`, `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `CRM_BASE_URL`, `CRM_API_SECRET`, `EC_QUOTE_INBOUND_SECRET`, `EC_QUOTE_DATA_DIR`. See `.env.example`.
+Names only, values come from the owner: `CALCULATOR_BASE_URL`, `CALCULATOR_SYNC_SECRET`, `ANTHROPIC_API_KEY`, `EC_QUOTE_MODEL`, `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `CRM_BASE_URL`, `CRM_API_SECRET`, `EC_QUOTE_INBOUND_SECRET`, `EC_QUOTE_DATA_DIR`, and for the site chat `EC_QUOTE_CORS_ORIGINS`. See `.env.example` and `ec_quote/config.py`.
 
 ## Related documents
 

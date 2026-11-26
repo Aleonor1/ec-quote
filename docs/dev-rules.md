@@ -72,5 +72,5 @@ For whoever builds this repository (the implement, QA and review sessions of the
 ## Security
 
 - No key, token or password in the repository. `.env.example` lists names only.
-- Inbound endpoints require `EC_QUOTE_INBOUND_SECRET`, compared in constant time; without the secret configured the endpoint refuses every request. A browser never holds this secret: the site chat reaches ec-quote through the calculator app's App Proxy.
-- Webhook style callbacks (Shopify) are verified by HMAC on the raw body before parsing.
+- Service endpoints (`/v1/inbound`, `/v1/approvals/*`, `/v1/orders/*`) require `EC_QUOTE_INBOUND_SECRET` in `x-ecquote-secret`, compared in constant time; without the secret configured the service does not start. A browser never holds this secret: the site chat uses HMAC signed session tokens, either directly under CORS for the shop's exact origin or behind the calculator app's App Proxy, which adds the secret server side.
+- Any future webhook receiver verifies the sender's HMAC on the raw body before parsing. ec-quote has none today: Meta webhooks belong to the CRM, Shopify order webhooks to the calculator app and the CRM.

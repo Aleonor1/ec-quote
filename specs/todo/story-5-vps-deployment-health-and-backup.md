@@ -4,7 +4,7 @@ title: "VPS deployment, health and backup"
 effort: MEDIUM
 epic: EPIC-0
 depends_on: [story-2]
-shared_files: [ec_quote/api/main.py, README.md, .gitignore]
+shared_files: [ec_quote/api/app.py, README.md, .gitignore]
 track: full
 models: {implementer: standard, qa: standard, ui: none, review: standard}
 ---
@@ -23,7 +23,7 @@ As the owner, I want to start, stop, update and restore the service from a short
 
 ## Scope
 
-**In:** `Dockerfile`, `deploy/compose.yml`, `deploy/Caddyfile`, `deploy/backup.sh`, `deploy/restore.sh`, `ec_quote/doctor.py` (preflight), `ec_quote/api/main.py` (`/health` details), `RUNBOOK.md` (Romanian, for the owner), `tests/test_doctor.py`, `tests/api/test_health.py`, `tests/deploy/test_backup_restore.py`.
+**In:** `Dockerfile`, `deploy/compose.yml`, `deploy/Caddyfile`, `deploy/backup.sh`, `deploy/restore.sh`, `ec_quote/doctor.py` (preflight), `ec_quote/api/app.py` (`/health` details), `RUNBOOK.md` (Romanian, for the owner), `tests/test_doctor.py`, `tests/api/test_health.py`, `tests/deploy/test_backup_restore.py`. Whatever already sits in `deploy/` is the starting point and is hardened, not replaced.
 
 **Out:** choosing the provider and the domain (owner); CI; alerts (EPIC-4); the deploy itself, which is the owner's action.
 

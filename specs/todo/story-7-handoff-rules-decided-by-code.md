@@ -4,7 +4,7 @@ title: "Handoff rules decided by code, all seven reasons"
 effort: MEDIUM
 epic: EPIC-1
 depends_on: [story-2, story-3]
-shared_files: [ec_quote/agent/model.py, ec_quote/agent/tools.py, ec_quote/agent/rules.py]
+shared_files: [ec_quote/agent/engine.py, ec_quote/agent/model.py, ec_quote/agent/tools.py, ec_quote/agent/offer.py]
 track: full
 models: {implementer: large, qa: standard, ui: none, review: large}
 ---
@@ -23,7 +23,7 @@ As a staff member, I want to receive exactly the conversations the rules say are
 
 ## Scope
 
-**In:** `ec_quote/agent/handoff.py` (new: `evaluate_handoff(state, rules, now) -> HandoffReason | None`, summary builder); `ec_quote/agent/model.py` and `ec_quote/agent/tools.py` (signals instead of decisions, counters in state); `ec_quote/api/texts.py` (customer texts per reason); `tests/agent/test_handoff_rules.py`, `tests/e2e/test_handoff_journeys.py`.
+**In:** `ec_quote/agent/handoff.py` (new: `evaluate_handoff(state, rules, now) -> HandoffReason | None` and the summary builder, taking over whatever handoff logic sits in `ec_quote/agent/engine.py` today); `ec_quote/agent/engine.py`, `model.py` and `tools.py` (signals instead of decisions, counters in state); `ec_quote/agent/offer.py` (customer texts per reason, where texts with policy are composed by code); `tests/agent/test_handoff_rules.py`, `tests/e2e/test_handoff_journeys.py`.
 
 **Out:** delivering the handoff to the CRM (story-14); file attempts counting inputs (story-18 supplies the verdicts; the counter and rule are here); approval flow.
 
@@ -40,7 +40,7 @@ As a staff member, I want to receive exactly the conversations the rules say are
 9. The fake model answering "continue with the offer" on a turn where a rule applies does not prevent the handoff; the action list ends with a `handoff` action carrying `handoff_reason`.
 10. After a handoff the conversation is in manual mode: later customer messages are stored and forwarded as notes, the model is not called, until staff release it or `manual_mode_quiet_hours` pass since the last staff message.
 11. The staff summary contains: the reason code, what the customer asked in one or two sentences, the validated choices, the stored quote if any, the file verdict if any. It is built by code from state; the model's free text is included as a quoted block labelled as unverified.
-12. Each reason has exactly one customer text in `ec_quote/api/texts.py`, pinned by a test; outside business hours the text states when a colleague answers, from `Rules.next_business_open(now)`.
+12. Each reason has exactly one customer text, in one module, pinned by a test; outside business hours the text states when a colleague answers, from `Rules.next_business_open(now)`.
 
 ## Technical Notes
 
