@@ -166,6 +166,16 @@ def test_small_base_ranking_rules(write_kb):
     assert kb.contradictions() == []
 
 
+def test_the_requested_product_stands_in_for_the_anchor_but_is_not_a_question_by_itself(write_kb):
+    kb = KnowledgeBase.from_dir(write_kb([
+        verified(id="flyere-hartie", question="Flyere?", anchors=["flyer"], variants=["flyere hartie groasa"],
+                 keywords=[], applies_to=["Flyere"], answer="Flyerele sunt pe hârtie de 130 g."),
+    ]))
+    assert kb.search("flyere", applies_to="Flyere") == []
+    assert [e.id for e in kb.search("hartie groasa", applies_to="Flyere")] == ["flyere-hartie"]
+    assert kb.search("hartie groasa") == []
+
+
 def test_a_tie_between_an_open_question_and_an_answer_returns_nothing(write_kb):
     kb = KnowledgeBase.from_dir(write_kb([
         verified(),
