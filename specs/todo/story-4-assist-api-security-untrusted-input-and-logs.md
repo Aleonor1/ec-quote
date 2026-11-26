@@ -23,7 +23,7 @@ As the owner, I want only my staff's browsers to reach the backend, to know who 
 
 ## Scope
 
-**In:** `ec_quote/config.py` (the assist tokens setting: a list of `name:token` pairs from the environment, and the allowed extension origins); `ec_quote/api/app.py` (token dependency, CORS for the extension origin, limits, optional routes off by default); `ec_quote/api/security.py`, `ratelimit.py`, `logutil.py`; `ec_quote/agent/prompts.py` and `model.py` (data delimiting); `.env.example` (names and comments only); `tests/api/test_assist_auth.py`, `test_limits.py`, `test_logs_pii.py`, `tests/agent/test_injection.py`, `tests/agent/fixtures/injection.json`.
+**In:** `ec_quote/config.py` (`EC_QUOTE_ASSIST_TOKENS`: `name:token` pairs, already read by the scaffold; the allowed extension origins); `ec_quote/api/app.py` (token dependency, CORS for the extension origin, limits, optional routes off by default); `ec_quote/api/security.py`, `ratelimit.py`, `logutil.py`; `ec_quote/agent/prompts.py` and `model.py` (data delimiting); `.env.example` (names and comments only); `tests/api/test_assist_auth.py`, `test_limits.py`, `test_logs_pii.py`, `tests/agent/test_injection.py`, `tests/agent/fixtures/injection.json`.
 
 **Out:** how the extension stores the token (story-13); file content checks (story-15); the site chat's own session tokens (story-29).
 

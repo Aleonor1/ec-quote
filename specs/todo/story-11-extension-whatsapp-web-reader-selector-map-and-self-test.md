@@ -15,7 +15,7 @@ models: {implementer: large, qa: standard, ui: standard, review: large}
 
 ## Summary
 
-Everything the product does starts from reading the conversation the staff member has open on web.whatsapp.com. WhatsApp Web offers no API for this and changes its page without notice, so the reader must be easy to repair and must never guess. This story makes the content script's reader: every selector and every assumption about the page in one file (the selector map), a reader that turns the open chat into the `AssistMessage` list the backend expects, a clear "cannot read" state when something does not match, and a self-test the staff or a developer can run on the live page to see which selectors still work. The reader only reads; it changes nothing on the page.
+Everything the product does starts from reading the conversation the staff member has open on web.whatsapp.com. WhatsApp Web offers no API for this and changes its page without notice, so the reader must be easy to repair and must never guess. The scaffold has a first `extension/content/selectors.js` and `composer.js`. This story hardens the content script's reader: every selector and every assumption about the page in one file (the selector map), a reader that turns the open chat into the `AssistMessage` list the backend expects, a clear "cannot read" state when something does not match, and a self-test the staff or a developer can run on the live page to see which selectors still work. The reader only reads; it changes nothing on the page.
 
 ## User Story
 
@@ -23,13 +23,13 @@ As a staff member, I want the assistant to see the conversation I am looking at,
 
 ## Scope
 
-**In:** `extension/manifest.json` (Manifest V3, content script on `https://web.whatsapp.com/*` only); `extension/src/whatsapp/selectors.js` (the selector map, the only file with selectors); `extension/src/whatsapp/reader.js` (open chat to contact and messages); `extension/src/whatsapp/selftest.js`; `extension/test/fixtures/*.html` (saved, anonymized fragments of the page: a text chat, a chat with images and documents, a group, an unsaved number, a business contact, no chat open); `extension/test/reader.test.js`, `selectors.test.js`; `extension/README.md` (how to refresh fixtures and repair a selector); `extension/package.json` only if a test runner is needed, with the reason; `CLAUDE.md` (the extension's test command).
+**In:** `extension/manifest.json` (Manifest V3, content script on `https://web.whatsapp.com/*` only); `extension/content/selectors.js` (the selector map, the only file with selectors); `extension/content/reader.js` (open chat to contact and messages); `extension/content/selftest.js`; `extension/test/fixtures/*.html` (saved, anonymized fragments of the page: a text chat, a chat with images and documents, a group, an unsaved number, a business contact, no chat open); `extension/test/reader.test.js`, `selectors.test.js`; `extension/README.md` (how to refresh fixtures and repair a selector); `extension/package.json` only if a test runner is needed, with the reason; `CLAUDE.md` (the extension's test command).
 
 **Out:** the panel and inserting text (story-12); talking to the backend and the token (story-12, story-13); downloading attachments (story-19); reading anything other than the open chat.
 
 ## Acceptance Criteria
 
-1. The selector map exports named entries (open chat header, contact phone or id, contact display name, message row, message id, direction, text, timestamp, attachment marker and kind, the composer); each has a selector or strategy and a description of what counts as found. A test fails if a selector string or `querySelector` call with a literal appears in any other file of `extension/src/`.
+1. The selector map exports named entries (open chat header, contact phone or id, contact display name, message row, message id, direction, text, timestamp, attachment marker and kind, the composer); each has a selector or strategy and a description of what counts as found. A test fails if a selector string or `querySelector` call with a literal appears in any other file of `extension/` outside `test/`.
 2. For each fixture, the reader returns the expected contact and the expected list of messages: stable `id`, `direction` (`in` for the customer, `out` for us), `text`, `sent_at` when the page shows it, and for each attachment its kind and file name without its content.
 3. Message ids are the stable identifiers WhatsApp puts on message rows; the same fixture read twice gives the same ids; a row without an id is skipped and counted, never given an invented id.
 4. The contact key is the phone number in digits when the page exposes it; for a contact where only a saved name is visible the reader reports `contact_key_unavailable` and the panel later asks the person to open the contact info once (the fixture set includes both).

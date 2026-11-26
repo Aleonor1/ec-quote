@@ -54,7 +54,7 @@ Chei și acces (doar numele; valorile le pui tu pe server, nu în depozit și nu
 2. `ANTHROPIC_API_KEY` și modelul ales (`EC_QUOTE_MODEL`).
 3. `SHOPIFY_SHOP_DOMAIN` și `SHOPIFY_ADMIN_TOKEN`: o aplicație personalizată în Shopify cu `write_draft_orders`, plus citire la produse și comenzi.
 4. O gazdă pentru server (un VPS) și un subdomeniu, de exemplu `oferta.etichetecreative.ro`.
-5. Numele celor care folosesc extensia (acum: Aleonor, Roxana). Fiecare primește un token propriu, ca să știm cine a generat fiecare ofertă și să putem opri un singur token.
+5. Numele celor care folosesc extensia (acum: Aleonor, Roxana). Fiecare primește un token propriu (`EC_QUOTE_ASSIST_TOKENS`), ca să știm cine a generat fiecare ofertă și să putem opri un singur token.
 6. Textul termenului de producție, standard și urgent, exact cum vrei să apară în mesaje. Fără el, sugestiile nu spun niciun termen.
 
 Decizii:

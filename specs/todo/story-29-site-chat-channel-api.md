@@ -11,7 +11,7 @@ models: {implementer: large, qa: standard, ui: none, review: large}
 
 # story-29: Site chat channel API hardened for a public browser
 
-**Repository:** ec-quote · **Epic:** [EPIC-4](epic-4-optional-site-chat-and-crm-lead-sync.md) · **Depends on:** story-3, story-4
+**Repository:** ec-quote · **Epic:** [EPIC-4](epic-4-optional-site-chat-and-crm-lead-sync.md) · **Depends on:** story-2, story-3, story-4
 
 > **Open decision.** After the change of direction on 2026-11-26 (assisted quoting in a Chrome extension), the owner has not confirmed that the site chat is still wanted. This story is kept last and must not start before the owner says yes (EPIC-4 D1).
 
@@ -31,7 +31,6 @@ As a visitor, I want to ask for a price in the chat on the site and keep my conv
 
 ## Acceptance Criteria
 
-0. Because no person reviews a site chat reply, every offer on this channel waits for staff approval (`pending_approval`) unless the owner decides otherwise in EPIC-4 D3; the handoff rules of story-7 apply as real handoffs here.
 1. `POST /v1/chat/session` returns `{session_token, expires_at, greeting}`; the token is an HMAC signed payload with a random session id and an expiry; the greeting is the fixed Romanian text and, with the default of EPIC-4 D3, says the assistant is automated. Session creation is rate limited per client IP.
 2. `POST /v1/chat/message` with a valid token, a client `message_id` and text or a `button_id` returns the actions; the engine is called with `Contact(channel="site", key=<session id>)`.
 3. A missing, malformed, expired or tampered token answers 401 (`session_invalid` or `session_expired`) and the engine is not called; a media token is refused as a session token and the reverse (the purpose is part of the signing key).
@@ -45,6 +44,7 @@ As a visitor, I want to ask for a price in the chat on the site and keep my conv
 11. Rate limits per IP, per session, per upload and per poll answer 429 with `Retry-After`; `max_offers_per_contact_per_day` from `Rules` applies per session. With the site chat settings unset, every `/v1/chat/*` route answers 404.
 12. A session can state a name, phone or email through explicit fields of the message schema (not parsed from free text by code); they are stored on the `Contact`, validated (phone normalizable to E.164, email syntax), and the session id stays the key.
 13. `docs/site-chat-contract.md` lists every chat and media endpoint, its fields, status codes and error codes, and each action kind with one JSON example; a test validates each example against the pydantic schemas.
+14. Because no person reviews a site chat reply, every offer on this channel waits for staff approval (`pending_approval`) unless the owner decides otherwise in EPIC-4 D3; the handoff rules of story-7 apply as real handoffs here.
 
 ## Technical Notes
 

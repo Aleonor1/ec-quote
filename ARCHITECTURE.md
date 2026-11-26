@@ -91,7 +91,7 @@ Reminders at the hours in `follow_up_hours` are shown to staff in the extension 
 
 ## Environment
 
-Names only, values come from the owner: `CALCULATOR_BASE_URL`, `CALCULATOR_SYNC_SECRET`, `ANTHROPIC_API_KEY`, `EC_QUOTE_MODEL`, `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `EC_QUOTE_DATA_DIR`, `EC_QUOTE_PUBLIC_BASE_URL`, and the per staff assist tokens (the setting is named by story-4 in `ec_quote/config.py`). `EC_QUOTE_INBOUND_SECRET`, `EC_QUOTE_CORS_ORIGINS`, `CRM_BASE_URL` and `CRM_API_SECRET` matter only for the optional EPIC-4.
+Names only, values come from the owner: `CALCULATOR_BASE_URL`, `CALCULATOR_SYNC_SECRET`, `ANTHROPIC_API_KEY`, `EC_QUOTE_MODEL`, `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ADMIN_TOKEN`, `EC_QUOTE_DATA_DIR`, `EC_QUOTE_PUBLIC_BASE_URL`, and `EC_QUOTE_ASSIST_TOKENS` (one `name:token` pair per staff member). `EC_QUOTE_INBOUND_SECRET`, `EC_QUOTE_CORS_ORIGINS`, `CRM_BASE_URL` and `CRM_API_SECRET` matter only for the optional EPIC-4.
 
 ## Related documents
 
