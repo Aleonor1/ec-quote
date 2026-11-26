@@ -72,8 +72,9 @@ def check_text(
     """Lista de probleme (goala = textul poate pleca). Mesajele sunt pentru model, nu pentru client."""
     problems: list[str] = []
     amounts = list(allowed_amounts)
+    foreign = re.search(r"\d\s*(?:eur|euro|€|usd|\$)(?!\w)|(?:€|\$)\s*\d", text, re.IGNORECASE)
     for amount in money_mentions(text):
-        if amount is None or not any(_same_amount(amount, known) for known in amounts):
+        if foreign or amount is None or not any(_same_amount(amount, known) for known in amounts):
             problems.append(
                 "Textul contine o suma care nu provine din get_price sau get_price_tiers. "
                 "Nu scrie sume; oferta cu preturi este compusa de sistem dupa create_checkout.")
