@@ -1,0 +1,55 @@
+{
+  "id": "sticla",
+  "title": "Sticlă (provizoriu)",
+  "placeholder": true,
+  "default": false,
+  "photo": "photo.jpg",
+  "keywords": [
+    "sticlă",
+    "sticle",
+    "sticluță",
+    "vin",
+    "bere",
+    "suc",
+    "sirop",
+    "ulei",
+    "țuică",
+    "pălincă",
+    "lichior",
+    "oțet",
+    "băutură",
+    "flacon"
+  ],
+  "quad": [
+    [
+      682,
+      630
+    ],
+    [
+      918,
+      630
+    ],
+    [
+      918,
+      900
+    ],
+    [
+      682,
+      900
+    ]
+  ],
+  "label_shape": "rectangle",
+  "padding": 0.03,
+  "cylinder": {
+    "wrap_degrees": 114,
+    "arc_px": 9,
+    "edge_shade": 0
+  },
+  "blend": {
+    "shade": "shade.png",
+    "photo_luminance": false,
+    "strength": 0.85,
+    "opacity": 1.0,
+    "mask": null
+  }
+}

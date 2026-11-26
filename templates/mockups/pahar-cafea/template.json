@@ -1,0 +1,53 @@
+{
+  "id": "pahar-cafea",
+  "title": "Pahar de cafea (provizoriu)",
+  "placeholder": true,
+  "default": false,
+  "photo": "photo.jpg",
+  "keywords": [
+    "pahar",
+    "pahare",
+    "cafea",
+    "cafenea",
+    "coffee",
+    "espresso",
+    "cappuccino",
+    "latte",
+    "ceai",
+    "to go",
+    "take away",
+    "barista"
+  ],
+  "quad": [
+    [
+      644,
+      500
+    ],
+    [
+      956,
+      500
+    ],
+    [
+      931,
+      800
+    ],
+    [
+      669,
+      800
+    ]
+  ],
+  "label_shape": "rounded",
+  "padding": 0.03,
+  "cylinder": {
+    "wrap_degrees": 100,
+    "arc_px": 15,
+    "edge_shade": 0
+  },
+  "blend": {
+    "shade": "shade.png",
+    "photo_luminance": false,
+    "strength": 0.85,
+    "opacity": 1.0,
+    "mask": null
+  }
+}

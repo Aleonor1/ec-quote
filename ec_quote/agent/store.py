@@ -33,12 +33,14 @@ class ConversationState(BaseModel):
     tiers: dict[str, list[TierOffer]] = Field(default_factory=dict)
     design: Attachment | None = None
     file_report: FileReport | None = None
+    last_failed_file: str | None = None
     mockup_path: str | None = None
     pending_buttons: dict[str, str] = Field(default_factory=dict)
     summary: str = ""
     lead_id: str | None = None
     offer_times: list[datetime] = Field(default_factory=list)
     pending_approval_id: str | None = None
+    last_approval_id: str | None = None
     manual_since: datetime | None = None
     last_message_at: datetime | None = None
     first_inbound_at: datetime | None = None

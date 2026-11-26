@@ -1,0 +1,55 @@
+{
+  "id": "borcan",
+  "title": "Borcan de sticlă (provizoriu)",
+  "placeholder": true,
+  "default": false,
+  "photo": "photo.jpg",
+  "keywords": [
+    "borcan",
+    "borcane",
+    "miere",
+    "dulceață",
+    "dulceturi",
+    "gem",
+    "zacuscă",
+    "murături",
+    "compot",
+    "conserve",
+    "apicultor",
+    "stupină",
+    "cremă",
+    "lumânare"
+  ],
+  "quad": [
+    [
+      612,
+      540
+    ],
+    [
+      988,
+      540
+    ],
+    [
+      988,
+      850
+    ],
+    [
+      612,
+      850
+    ]
+  ],
+  "label_shape": "rounded",
+  "padding": 0.03,
+  "cylinder": {
+    "wrap_degrees": 103,
+    "arc_px": 14,
+    "edge_shade": 0
+  },
+  "blend": {
+    "shade": "shade.png",
+    "photo_luminance": false,
+    "strength": 0.85,
+    "opacity": 1.0,
+    "mask": null
+  }
+}

@@ -51,6 +51,8 @@ class Settings(BaseModel):
     public_base_url: str = ""
     cors_origins: tuple[str, ...] = ()
     trusted_proxy_hops: int = 0
+    # True: /v1/chat/* accepta doar cereri venite prin App Proxy-ul calculatorului (cu secretul).
+    chat_require_secret: bool = False
     demo: bool = False
     git_commit: str | None = None
 
@@ -178,6 +180,7 @@ def load_settings(env: Mapping[str, str] | None = None, *,
         public_base_url=public_base_url,
         cors_origins=origins,
         demo=_flag(get("EC_QUOTE_DEMO")),
+        chat_require_secret=_flag(get("EC_QUOTE_CHAT_REQUIRE_SECRET")),
         git_commit=get("GIT_COMMIT") or None,
         attachment_hosts=tuple(h.lower() for h in _csv(get("EC_QUOTE_ATTACHMENT_HOSTS"))),
         allowed_mimes=tuple(m.lower() for m in _csv(get("EC_QUOTE_ALLOWED_MIMES")))

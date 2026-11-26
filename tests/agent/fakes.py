@@ -1,0 +1,230 @@
+"""Porturi false, in memorie, pentru testele motorului. Fara retea, fara module vecine."""
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+from zoneinfo import ZoneInfo
+
+from ec_quote.agent import InMemoryStore, ModelReply, QuoteEngine, Rules, ToolCall
+from ec_quote.contracts import (
+    Attachment, Checkout, Contact, FileReport, FileVerdict, InboundMessage, LineProperty, MockupResult,
+    PriceQuote, TierOffer, Unpriced,
+)
+
+TZ = ZoneInfo("Europe/Bucharest")
+THURSDAY_10 = datetime(2026, 11, 26, 10, 0, tzinfo=TZ)
+
+RULES_DATA = {
+    "handoff_value_threshold_ron_ex_vat": "3000",
+    "offer_validity_days": 7,
+    "max_clarifying_questions": 2,
+    "max_misunderstandings": 2,
+    "max_file_attempts": 2,
+    "upsell_tier_count": 2,
+    "vat_percent": "21",
+    "shadow_mode": False,
+    "manual_mode_quiet_hours": 48,
+    "max_offers_per_contact_per_day": 5,
+    "business_hours": {"start": "09:00", "end": "18:00", "days": [1, 2, 3, 4, 5]},
+    "approved_material_claims": ["rezistenta la umezeala si ulei", "lac UV mat", "fara laminare"],
+    "production_term_standard": "3-5 zile lucrătoare",
+}
+
+CATALOG = {
+    "version": 1,
+    "generatedAt": "2026-11-26T08:00:00Z",
+    "products": [{
+        "id": "gid://shopify/Product/1",
+        "title": "Etichete autocolante",
+        "handle": "etichete-autocolante",
+        "shapes": ["Rotund", "Dreptunghi"],
+        "materials": [{"name": "Vinyl alb", "pricingTableId": "t1"}, {"name": "Hârtie", "pricingTableId": "t2"}],
+        "customSize": {"enabled": True, "minCm": 2, "maxCm": 100},
+        "addOnGroups": [{"name": "Finisaj", "choices": [{"name": "Lucios", "modifierPercent": 0}]}],
+    }],
+}
+
+LINE = {"product_id": "gid://shopify/Product/1", "material_name": "vinyl alb", "shape": "rotund",
+        "width_cm": 5, "height_cm": 5, "quantity": 500}
+
+
+def make_rules(**overrides) -> Rules:
+    return Rules.from_dict({**RULES_DATA, **overrides})
+
+
+class FakePricing:
+    def __init__(self, unit_ex_vat: str = "0.50") -> None:
+        self.unit = Decimal(unit_ex_vat)
+        self.unpriced: Unpriced | None = None
+        self.price_calls: list = []
+        self.tier_calls: list = []
+        self.fail_catalog = False
+
+    def catalog(self) -> dict:
+        if self.fail_catalog:
+            raise RuntimeError("calculator jos")
+        return CATALOG
+
+    def _totals(self, quantity: int) -> tuple[Decimal, Decimal]:
+        ex_vat = (self.unit * quantity).quantize(Decimal("0.01"))
+        return ex_vat, (ex_vat * Decimal("1.21")).quantize(Decimal("0.01"))
+
+    def get_price(self, choices):
+        self.price_calls.append(choices)
+        if self.unpriced is not None:
+            return self.unpriced
+        ex_vat, total = self._totals(choices.quantity)
+        return PriceQuote(choices=choices, total=total, total_ex_vat=ex_vat, unit_price=self.unit,
+                          discount_percent=Decimal("10"), breakdown={}, properties=[LineProperty(name="a", value="b")])
+
+    def get_price_tiers(self, choices, count):
+        self.tier_calls.append((choices, count))
+        tiers = []
+        for step in range(1, count + 1):
+            quantity = choices.quantity * (step + 1)
+            ex_vat, total = self._totals(quantity)
+            tiers.append(TierOffer(quantity=quantity, total=total, total_ex_vat=ex_vat, unit_price=self.unit))
+        return tiers
+
+
+class FakeFiles:
+    def __init__(self, verdict: FileVerdict = FileVerdict.OK) -> None:
+        self.verdict = verdict
+        self.calls: list = []
+
+    def check_file(self, path, width_cm, height_cm):
+        self.calls.append((path, width_cm, height_cm))
+        problems = [] if self.verdict == FileVerdict.OK else ["low_dpi"]
+        return FileReport(kind="raster", mime="image/png", verdict=self.verdict, problems=problems,
+                          dpi_at_size=Decimal("96"))
+
+
+class FakeMockup:
+    def __init__(self) -> None:
+        self.mockups: list = []
+        self.offer_images: list = []
+        self.fail = False
+
+    def make_mockup(self, design_path, context_hint, out_dir):
+        if self.fail:
+            raise RuntimeError("fara sablon")
+        self.mockups.append((design_path, context_hint, out_dir))
+        return MockupResult(template_id="borcan-1", image_path=f"{out_dir}/mockup.png")
+
+    def make_offer_image(self, mockup_path, lines, production_term, valid_until, out_dir):
+        if self.fail:
+            raise RuntimeError("fara imagine")
+        self.offer_images.append((mockup_path, lines, production_term, valid_until))
+        return f"{out_dir}/offer.png"
+
+
+class FakeCheckout:
+    def __init__(self) -> None:
+        self.calls: list = []
+        self.total_override: Decimal | None = None
+        self.fail = False
+
+    def create_checkout(self, quote, contact, artwork_url, valid_until):
+        if self.fail:
+            raise RuntimeError("shopify jos")
+        self.calls.append((quote, contact, artwork_url, valid_until))
+        return Checkout(draft_order_id=f"D{len(self.calls)}", invoice_url=f"https://pay.example/{len(self.calls)}",
+                        total=self.total_override if self.total_override is not None else quote.total)
+
+
+class FakeCrm:
+    def __init__(self) -> None:
+        self.calls: list = []
+        self.fail = False
+
+    def upsert_lead(self, contact, summary, quote, checkout, status):
+        if self.fail:
+            raise RuntimeError("crm jos")
+        self.calls.append({"contact": contact, "summary": summary, "quote": quote, "checkout": checkout,
+                           "status": status})
+        return "lead-1"
+
+    @property
+    def statuses(self) -> list[str]:
+        return [c["status"] for c in self.calls]
+
+
+class FakeHandoff:
+    def __init__(self) -> None:
+        self.calls: list = []
+        self.fail = False
+
+    def handoff(self, contact, reason, summary, now):
+        if self.fail:
+            raise RuntimeError("inbox jos")
+        self.calls.append((contact, reason, summary, now))
+
+
+class ScriptedModel:
+    """Raspunde cu replicile date, in ordine; tine minte ce a primit."""
+
+    def __init__(self, *replies) -> None:
+        self.replies = list(replies)
+        self.calls: list[dict] = []
+
+    def add(self, *replies) -> None:
+        self.replies.extend(replies)
+
+    def complete(self, *, system, tools, messages):
+        self.calls.append({"system": system, "tools": tools, "messages": [dict(m) for m in messages]})
+        if not self.replies:
+            raise AssertionError("modelul fals nu mai are replici")
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+
+_counter = iter(range(1, 100000))
+
+
+def call(name: str, **args) -> ModelReply:
+    return ModelReply(tool_calls=[ToolCall(id=f"tu_{next(_counter)}", name=name, input=args)], stop_reason="tool_use")
+
+
+def calls(*pairs) -> ModelReply:
+    return ModelReply(tool_calls=[ToolCall(id=f"tu_{next(_counter)}", name=n, input=a) for n, a in pairs],
+                      stop_reason="tool_use")
+
+
+def say(text: str) -> ModelReply:
+    return ModelReply(text=text)
+
+
+def offer_script(quantity: int = 500) -> list[ModelReply]:
+    return [call("get_price", **{**LINE, "quantity": quantity}), call("get_price_tiers", quote_id="q1"),
+            call("create_checkout", quote_id="q1", summary="500 etichete rotunde 5 cm pentru borcane")]
+
+
+class Harness:
+    def __init__(self, tmp_path, *replies, store=None, **rule_overrides) -> None:
+        self.model = ScriptedModel(*replies)
+        self.pricing = FakePricing()
+        self.files = FakeFiles()
+        self.mockup = FakeMockup()
+        self.checkout = FakeCheckout()
+        self.crm = FakeCrm()
+        self.handoff = FakeHandoff()
+        self.store = store or InMemoryStore()
+        self.rules = make_rules(**rule_overrides)
+        ids = iter(f"ap{i}" for i in range(1, 1000))
+        self.engine = QuoteEngine(
+            model=self.model, pricing=self.pricing, files=self.files, mockup=self.mockup, checkout=self.checkout,
+            crm=self.crm, handoff=self.handoff, store=self.store, rules=self.rules, data_dir=tmp_path,
+            id_factory=lambda: next(ids))
+
+    def state(self, key: str = "40700000001"):
+        return self.store.load("whatsapp", key)
+
+    def send(self, text: str = "", *, at: datetime = THURSDAY_10, key: str = "40700000001", staff: bool = False,
+             button_id: str | None = None, attachment: bool = False, message_id: str | None = None):
+        attachments = [Attachment(path="/tmp/in/logo.png", mime="image/png", filename="logo.png",
+                                  public_url="https://cdn.example/logo.png")] if attachment else []
+        message = InboundMessage(contact=Contact(channel="whatsapp", key=key, phone=f"+{key}"), text=text,
+                                 button_id=button_id, attachments=attachments, received_at=at, from_staff=staff)
+        return self.engine.handle(message, message_id=message_id)

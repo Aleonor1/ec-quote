@@ -38,7 +38,7 @@ _ELLIPSIS = "..."
 
 _MARGIN = 56
 _FOOTER_H = 92
-_COLS = (0.0, 0.27, 0.47, 0.735, 1.0)  # marginile coloanelor, ca fractii din latimea randului
+_COLS = (0.0, 0.25, 0.44, 0.70, 1.0)  # marginile coloanelor, ca fractii din latimea randului
 
 
 def clean_text(text: str) -> str:
@@ -206,10 +206,10 @@ def _hero(mockup_path: str, size: tuple[int, int]) -> Image.Image:
     return hero
 
 
-def _content_height(content: OfferContent, row_h: int, compact: bool) -> int:
+def _content_height(content: OfferContent, row_h: int, with_title: bool) -> int:
     n = len(content.rows)
     subtitle = 84 if content.subtitle else 0
-    return 36 + 54 + subtitle + 26 + 34 + n * row_h + (n - 1) * 10 + 30 + 2 * 44 + (16 if compact else 30)
+    return 36 + (54 if with_title else 0) + subtitle + 26 + 34 + n * row_h + (n - 1) * 10 + 30 + 2 * 44 + 16
 
 
 def render_offer(mockup_path: str | None, lines: list[OfferLine], production_term: str,
@@ -222,9 +222,10 @@ def render_offer(mockup_path: str | None, lines: list[OfferLine], production_ter
     # inaltimi: mockupul primeste ce ramane dupa tabel
     row_h = 96 if mockup_path is None else 88
     if mockup_path is None:
-        top_h = 250
-        while _content_height(content, row_h, True) > body_bottom - top_h and row_h > 60:
+        while _content_height(content, row_h, False) > body_bottom - 250 and row_h > 60:
             row_h -= 4
+        # antetul de brand preia spatiul liber
+        top_h = max(250, min(470, body_bottom - _content_height(content, row_h, False) - 40))
     else:
         while True:
             top_h = min(600, body_bottom - _content_height(content, row_h, True))
@@ -241,23 +242,21 @@ def render_offer(mockup_path: str | None, lines: list[OfferLine], production_ter
 
     if mockup_path is None:
         draw.rectangle((0, 0, px(width), px(top_h)), fill=_NAVY)
-        draw.rounded_rectangle((px(_MARGIN), px(78), px(_MARGIN + 72), px(86)), radius=px(4), fill=_LIME)
-        draw.text((px(_MARGIN), px(160)), BRAND, font=_font(62, True), fill=_WHITE, anchor="ls")
-        draw.text((px(_MARGIN), px(208)), TITLE, font=_font(30), fill=_SOFT, anchor="ls")
+        mid = top_h / 2
+        draw.rounded_rectangle((px(_MARGIN), px(mid - 62), px(_MARGIN + 72), px(mid - 54)), radius=px(4), fill=_LIME)
+        draw.text((px(_MARGIN), px(mid + 28)), BRAND, font=_font(62, True), fill=_WHITE, anchor="ls")
+        draw.text((px(_MARGIN), px(mid + 76)), TITLE, font=_font(30), fill=_SOFT, anchor="ls")
     else:
         img.paste(_hero(mockup_path, (px(width), px(top_h))), (0, 0))
         draw.rectangle((0, px(top_h), px(width), px(top_h + 6)), fill=_LIME)
 
     inner_w = width - 2 * _MARGIN
-    free = body_bottom - top_h - _content_height(content, row_h, True)
+    free = body_bottom - top_h - _content_height(content, row_h, mockup_path is not None)
     y = top_h + 36 + max(0, free) // 2
 
     if mockup_path is not None:
         draw.text((px(_MARGIN), px(y + 42)), TITLE, font=_font(44, True), fill=_NAVY, anchor="ls")
-    else:
-        draw.text((px(_MARGIN), px(y + 42)), "Prețuri pentru comanda ta", font=_font(40, True),
-                  fill=_NAVY, anchor="ls")
-    y += 54
+        y += 54
 
     if content.subtitle:
         font = _font(26)

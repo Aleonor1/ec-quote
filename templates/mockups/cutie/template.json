@@ -1,0 +1,52 @@
+{
+  "id": "cutie",
+  "title": "Cutie de carton (provizoriu)",
+  "placeholder": true,
+  "default": true,
+  "photo": "photo.jpg",
+  "keywords": [
+    "cutie",
+    "cutii",
+    "colet",
+    "colete",
+    "ambalaj",
+    "ambalaje",
+    "carton",
+    "pachet",
+    "pachete",
+    "livrare",
+    "cadou",
+    "cadouri",
+    "pizza",
+    "prăjituri",
+    "cofetărie"
+  ],
+  "quad": [
+    [
+      515,
+      530
+    ],
+    [
+      876,
+      581
+    ],
+    [
+      876,
+      864
+    ],
+    [
+      515,
+      800
+    ]
+  ],
+  "label_shape": "rounded",
+  "padding": 0.04,
+  "cylinder": null,
+  "blend": {
+    "shade": null,
+    "photo_luminance": true,
+    "strength": 0.9,
+    "opacity": 1.0,
+    "mask": null
+  }
+}

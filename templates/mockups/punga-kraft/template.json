@@ -1,0 +1,51 @@
+{
+  "id": "punga-kraft",
+  "title": "Pungă kraft (provizoriu)",
+  "placeholder": true,
+  "default": false,
+  "photo": "photo.jpg",
+  "keywords": [
+    "pungă kraft",
+    "pungă",
+    "pungi",
+    "punguță",
+    "kraft",
+    "doypack",
+    "sac",
+    "saci",
+    "plic",
+    "boabe",
+    "condimente",
+    "făină",
+    "granola",
+    "fructe uscate"
+  ],
+  "quad": [
+    [
+      630,
+      440
+    ],
+    [
+      970,
+      440
+    ],
+    [
+      970,
+      800
+    ],
+    [
+      630,
+      800
+    ]
+  ],
+  "label_shape": "rounded",
+  "padding": 0.04,
+  "cylinder": null,
+  "blend": {
+    "shade": null,
+    "photo_luminance": true,
+    "strength": 0.9,
+    "opacity": 0.98,
+    "mask": null
+  }
+}

@@ -1,6 +1,7 @@
 """Formatul pe fir al API-ului: cereri, raspunsuri si serializarea actiunilor pe canal."""
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated
@@ -48,8 +49,6 @@ class InboundRequest(_Strict):
 
     @model_validator(mode="after")
     def _key_matches_channel(self):
-        import re
-
         pattern = WA_KEY_PATTERN if self.channel == "whatsapp" else SITE_KEY_PATTERN
         if not re.fullmatch(pattern, self.contact.key):
             raise ValueError("contact.key nu are forma canalului")
