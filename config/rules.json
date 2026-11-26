@@ -1,0 +1,21 @@
+{
+  "handoff_value_threshold_ron_ex_vat": "3000",
+  "offer_validity_days": 7,
+  "max_clarifying_questions": 2,
+  "max_misunderstandings": 2,
+  "max_file_attempts": 2,
+  "upsell_tier_count": 2,
+  "vat_percent": "21",
+  "shadow_mode": true,
+  "manual_mode_quiet_hours": 48,
+  "follow_up_hours": [24, 72],
+  "max_offers_per_contact_per_day": 5,
+  "business_hours": {"start": "09:00", "end": "18:00", "days": [1, 2, 3, 4, 5]},
+  "min_dpi_ok": 300,
+  "min_dpi_weak": 150,
+  "approved_material_claims": [
+    "rezistenta la umezeala si ulei",
+    "lac UV mat",
+    "fara laminare"
+  ]
+}
