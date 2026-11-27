@@ -24,14 +24,14 @@ from pydantic import ValidationError
 from ec_quote.contracts import (
     AssistMessage, AssistSuggestion, Attachment, Button, CheckoutPort, Contact, CrmPort, FilePort, FileVerdict,
     HandoffPort, HandoffReason, InboundMessage, KnowledgePort, LineChoices, MockupPort, OfferLine,
-    OutboundAction, PriceQuote, PricingPort, Unpriced,
+    OutboundAction, PendingAttachment, PriceQuote, PricingPort, Unpriced,
 )
 
 from . import offer as offer_text
 from .guard import check_text, money_mentions, normalize
 from .model import ModelPort, ModelReply, ToolCall
 from .prompts import (
-    BUTTON_TITLE_MAX, MAX_BUTTONS, MODE_ASSIST, MODE_AUTONOMOUS, build_system, wrap_customer, wrap_file,
+    BUTTON_TITLE_MAX, MAX_BUTTONS, MODE_ASSIST, MODE_AUTONOMOUS, build_system, wrap_customer, wrap_file, wrap_quote,
 )
 from .rules import Rules, to_local
 from .store import (
@@ -55,6 +55,10 @@ _KEPT_SEEN = 2000
 _MAX_GUARD_RETRIES = 2
 _EDITED_RATIO = 0.6
 _WEEKDAYS = ["luni", "marti", "miercuri", "joi", "vineri", "sambata", "duminica"]
+_UNUPLOADED_STAFF_NOTE = (
+    "Clientul a trimis un fișier în conversație; folosiți „Trimite fișierul la verificare” "
+    "din panou pentru verificarea tehnică."
+)
 
 
 class ApprovalError(Exception):
@@ -155,22 +159,55 @@ class QuoteEngine:
 
             ordered = _ordered(messages)
             seen = set(state.assist_seen)
+            logged_by_id = {
+                entry.meta.get("id"): entry
+                for entry in self.store.recent_messages(state.channel, state.key, _TRANSCRIPT_LIMIT * 2)
+                if entry.meta.get("id")
+            }
+            new_attachment = False
+            for existing in ordered:
+                if existing.id in seen and existing.direction == "in" and existing.attachments:
+                    prev_entry = logged_by_id.get(existing.id)
+                    prev_files = (prev_entry.meta.get("attachments") or []) if prev_entry is not None else []
+                    if len(existing.attachments) > len(prev_files):
+                        new_attachment = True
+                        self._take_design(state, existing.attachments)
+                        at = to_local(existing.sent_at) if existing.sent_at else now
+                        self.store.append_message(state.channel, state.key, LoggedMessage(
+                            direction="in",
+                            text=existing.text,
+                            at=at,
+                            meta={"id": existing.id, "attachments": [_file_name(a) for a in existing.attachments]},
+                        ))
             fresh = [m for m in ordered if m.id not in seen]
             for message in fresh:
                 at = to_local(message.sent_at) if message.sent_at else now
+                meta: dict = {
+                    "id": message.id,
+                    "attachments": [_file_name(a) for a in message.attachments],
+                    "first_seen_at": now.isoformat(),
+                }
+                if message.sent_at is None:
+                    meta["missing_sent_at"] = True
+                if message.quoted_text:
+                    meta["quoted_text"] = message.quoted_text
+                if message.unuploaded_attachments and not message.attachments:
+                    meta["unuploaded_attachments"] = [
+                        u.model_dump(exclude_none=True) for u in message.unuploaded_attachments
+                    ]
                 self.store.append_message(state.channel, state.key, LoggedMessage(
-                    direction="in" if message.direction == "in" else "staff", text=message.text, at=at,
-                    meta={"id": message.id, "attachments": [_file_name(a) for a in message.attachments]}))
+                    direction="in" if message.direction == "in" else "staff", text=message.text, at=at, meta=meta))
                 state.assist_seen.append(message.id)
                 if message.direction == "in":
                     state.first_inbound_at = state.first_inbound_at or at
                     self._take_design(state, message.attachments)
                 elif previous is not None and previous.outcome is None and previous.suggestion.text:
                     # Primul mesaj al omului dupa sugestie spune cat de utila a fost.
-                    previous.outcome = _match_outcome(previous.suggestion.text, message.text)
+                    threshold = float(self.rules.raw.get("suggestion_similarity_threshold", _EDITED_RATIO))
+                    previous.outcome = _match_outcome(previous.suggestion.text, message.text, threshold=threshold)
                     self.store.save_suggestion(previous)
             state.assist_seen = state.assist_seen[-_KEPT_SEEN:]
-            if fresh:
+            if fresh or new_attachment:
                 state.last_message_at = now
             if state.status in ("manual", "closed", "offer_pending_approval"):
                 state.status = "collecting"  # in modul asistat nu exista tacere
@@ -180,15 +217,18 @@ class QuoteEngine:
             if last is None or last.direction == "out":
                 self.store.save(state)
                 return self._none_suggestion()
-            if not fresh_in and self._still_valid(previous, last.id, now):
+            if not fresh_in and not new_attachment and self._still_valid(previous, last.id, now):
                 self.store.save(state)
                 return previous.suggestion
 
+            has_unuploaded = any(
+                m.direction == "in" and m.unuploaded_attachments and not m.attachments for m in ordered
+            )
             if is_new:
-                state.summary = last.text[:200]
+                state.summary = (last.text or _format_unuploaded_plain(last.unuploaded_attachments))[:200]
                 self._crm(state, "new")
             assist = _Assist()
-            text = " ".join(m.text for m in fresh_in) or last.text
+            text = " ".join(m.text for m in fresh_in if m.text) or last.text
             plain = normalize(text)
             if not last.text.strip() and last.attachments and all(_unsupported(a) for a in last.attachments):
                 voice = any(a.mime.startswith("audio/") for a in last.attachments)
@@ -206,12 +246,14 @@ class QuoteEngine:
             else:
                 inbound = InboundMessage(contact=state.contact, message_id=last.id, text=last.text,
                                          attachments=last.attachments, received_at=now)
-                actions = self._run_model(state, inbound, now, assist=assist, current_id=last.id)
+                actions = self._run_model(state, inbound, now, assist=assist, current_id=last.id,
+                                          current_assist=last, has_unuploaded=has_unuploaded)
                 if assist.result is None:
                     assist.result = ({"kind": "reply", "text": actions[0].text} if actions
                                      else {"kind": "none", "note_for_staff": "Nu este nevoie de răspuns."})
 
-            suggestion, record = self._record_suggestion(state, assist.result, last, now)
+            suggestion, record = self._record_suggestion(state, assist.result, last, now,
+                                                         has_unuploaded=has_unuploaded)
             if previous is not None and previous.status == "pending":
                 previous.status = "superseded"
                 self.store.save_suggestion(previous)
@@ -298,7 +340,7 @@ class QuoteEngine:
         return record
 
     def _record_suggestion(self, state: ConversationState, result: dict, last: AssistMessage,
-                           now: datetime) -> tuple[AssistSuggestion, Suggestion]:
+                           now: datetime, *, has_unuploaded: bool = False) -> tuple[AssistSuggestion, Suggestion]:
         result = dict(result)
         quotes = result.pop("quotes", [])
         valid_until = result.pop("valid_until", None)
@@ -308,15 +350,22 @@ class QuoteEngine:
         notes = [result.get("note_for_staff", "")]
         if result.get("kind") != "none":
             notes.append(offer_text.file_staff_note(state.file_report))
+            if has_unuploaded and state.design is None:
+                notes.append(_UNUPLOADED_STAFF_NOTE)
         notes += [f"Nu avem un răspuns aprobat pentru: {q}" for q in result.pop("gaps", [])]
         result["note_for_staff"] = " ".join(n for n in notes if n)
         suggestion = AssistSuggestion(suggestion_id=self._new_id(), **result)
-        sent_at = to_local(last.sent_at) if last.sent_at else now
+        customer_sent_at = to_local(last.sent_at) if last.sent_at else None
+        basis_at = customer_sent_at or now
         record = Suggestion(
             id=suggestion.suggestion_id, channel=state.channel, key=state.key, created_at=now,
             basis_message_id=last.id, suggestion=suggestion, quotes=quotes, offer_text=full_offer,
             language=language, valid_until=valid_until, artwork_url=artwork_url,
-            latency_s=max((now - sent_at).total_seconds(), 0.0))
+            latency_s=max((now - basis_at).total_seconds(), 0.0),
+            customer_sent_at=customer_sent_at,
+            first_seen_at=now,
+            file_verdict=state.file_report.verdict if state.file_report is not None else None,
+        )
         return suggestion, record
 
     # ================= mod autonom (chatul de pe site) =================
@@ -486,18 +535,25 @@ class QuoteEngine:
     # ================= bucla modelului =================
 
     def _run_model(self, state: ConversationState, message: InboundMessage, now: datetime,
-                   assist: _Assist | None = None, current_id: str | None = None) -> list[OutboundAction]:
+                   assist: _Assist | None = None, current_id: str | None = None,
+                   current_assist: AssistMessage | None = None,
+                   has_unuploaded: bool = False) -> list[OutboundAction]:
         try:
             catalog = self.pricing.catalog()
         except Exception:
             log.exception("catalogul calculatorului nu a putut fi citit")
             return self._handoff(state, HandoffReason.NOT_UNDERSTOOD,
                                  "Eroare tehnică: catalogul calculatorului este indisponibil.", now, assist=assist)
-        turn = _Turn(catalog=catalog, assist=assist, customer_text=message.text,
+        customer_text = message.text or (
+            _format_unuploaded_plain(current_assist.unuploaded_attachments)
+            if current_assist and current_assist.unuploaded_attachments else ""
+        )
+        turn = _Turn(catalog=catalog, assist=assist, customer_text=customer_text,
                      catalog_terms=_catalog_terms(catalog))
         system = build_system(self.rules, catalog)
-        messages: list[dict] = [{"role": "user", "content": [
-            {"type": "text", "text": self._render_turn(state, message, now, assist is not None, current_id)}]}]
+        messages: list[dict] = [{"role": "user", "content": [{"type": "text", "text": self._render_turn(
+            state, message, now, assist is not None, current_id,
+            current_assist=current_assist, has_unuploaded=has_unuploaded)}]}]
         problems: list[str] = []
 
         for _ in range(self.max_model_steps):
@@ -1155,7 +1211,9 @@ class QuoteEngine:
     # ================= context pentru model =================
 
     def _render_turn(self, state: ConversationState, message: InboundMessage, now: datetime,
-                     assisted: bool = False, current_id: str | None = None) -> str:
+                     assisted: bool = False, current_id: str | None = None,
+                     current_assist: AssistMessage | None = None,
+                     has_unuploaded: bool = False) -> str:
         left = max(self.rules.max_clarifying_questions - state.questions_asked, 0)
         rows = [
             f"Ora curenta: {now.strftime('%Y-%m-%d %H:%M')} (Europe/Bucharest), {_WEEKDAYS[now.weekday()]}.",
@@ -1174,6 +1232,8 @@ class QuoteEngine:
                 check = f"{state.file_report.verdict.value} {state.file_report.problems}"
             rows.append(f"Fisier de la client: {wrap_file(_file_name(state.design))} ({state.design.mime}); "
                         f"verificare: {check}; mockup: {'facut' if state.mockup_path else 'nefacut'}.")
+        elif has_unuploaded:
+            rows.append("Fisier de la client: trimis in conversatie, neincarcat inca pentru verificare tehnica.")
         else:
             rows.append("Fisier de la client: niciunul.")
         if state.quotes:
@@ -1195,12 +1255,20 @@ class QuoteEngine:
             rows.append("Conversatia de pana acum:")
             for entry in history:
                 stamp = to_local(entry.at).strftime("%d.%m %H:%M")
+                quoted = entry.meta.get("quoted_text")
+                quote_part = f" [raspuns la: {wrap_quote(str(quoted))}]" if quoted else ""
                 if entry.direction == "in":
                     files = entry.meta.get("attachments") or []
-                    extra = f" [fisiere: {wrap_file(', '.join(files))}]" if files else ""
-                    rows.append(f"[client {stamp}] {wrap_customer(entry.text)}{extra}")
+                    pending = entry.meta.get("unuploaded_attachments") or []
+                    if files:
+                        extra = f" [fisiere: {wrap_file(', '.join(files))}]"
+                    elif pending:
+                        extra = f" [atasamente neincarcate: {_format_unuploaded_dicts(pending)}]"
+                    else:
+                        extra = ""
+                    rows.append(f"[client {stamp}]{quote_part} {wrap_customer(entry.text)}{extra}")
                 elif entry.direction == "staff":
-                    rows.append(f"[coleg {stamp}] {wrap_customer(entry.text)}")
+                    rows.append(f"[coleg {stamp}]{quote_part} {wrap_customer(entry.text)}")
                 elif entry.meta.get("kind") == "pending_approval":
                     rows.append(f"[sistem {stamp}] Oferta pregatita, asteapta aprobarea unui coleg.")
                 else:
@@ -1212,9 +1280,14 @@ class QuoteEngine:
             text = chosen if chosen and not text else (text or message.button_id)
         rows.append("")
         rows.append("Mesajul curent al clientului:")
+        if current_assist is not None and current_assist.quoted_text:
+            rows.append(f"Raspuns la mesajul citat: {wrap_quote(current_assist.quoted_text)}")
         rows.append(wrap_customer(text))
         if message.attachments:
             rows.append(f"Fisiere atasate acum: {wrap_file(', '.join(_file_name(a) for a in message.attachments))}")
+        elif current_assist is not None and current_assist.unuploaded_attachments:
+            rows.append("Atasamente trimise de client (neincarcate inca pentru verificare): "
+                        f"{_format_unuploaded(current_assist.unuploaded_attachments)}")
         return "\n".join(rows)
 
     # ================= utilitare =================
@@ -1264,15 +1337,37 @@ def _ordered(messages: list[AssistMessage]) -> list[AssistMessage]:
     return unique
 
 
-def _match_outcome(suggested: str, sent: str) -> str:
+def _match_outcome(suggested: str, sent: str, *, threshold: float = _EDITED_RATIO) -> str:
     left, right = normalize(suggested), normalize(sent)
     if left == right:
         return "exact"
-    return "edited" if difflib.SequenceMatcher(None, left, right).ratio() >= _EDITED_RATIO else "ignored"
+    return "edited" if difflib.SequenceMatcher(None, left, right).ratio() >= threshold else "ignored"
 
 
 def _file_name(attachment: Attachment) -> str:
     return attachment.filename or Path(attachment.path).name
+
+
+def _format_unuploaded(items: list[PendingAttachment]) -> str:
+    parts = []
+    for item in items:
+        label = "imagine" if item.kind == "image" else "document"
+        parts.append(f"{label} ({wrap_file(item.filename)})" if item.filename else label)
+    return ", ".join(parts)
+
+
+def _format_unuploaded_dicts(items: list[dict]) -> str:
+    parts = []
+    for item in items:
+        label = "imagine" if item.get("kind") == "image" else "document"
+        filename = item.get("filename")
+        parts.append(f"{label} ({wrap_file(str(filename))})" if filename else label)
+    return ", ".join(parts)
+
+
+def _format_unuploaded_plain(items: list[PendingAttachment]) -> str:
+    labels = ["imagine" if item.kind == "image" else "document" for item in items]
+    return f"[fișier trimis: {', '.join(labels)}]" if labels else ""
 
 
 def _unsupported(attachment: Attachment) -> bool:

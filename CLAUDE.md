@@ -26,9 +26,10 @@ python3 -m compileall -q ec_quote tests  # lint (syntax); no other linter yet
 python3 -m pytest -q                    # backend: unit and end to end with fakes, no network
 python3 -m pytest -q --cov=ec_quote --cov-branch --cov-report=xml:coverage.xml   # coverage
 python3 -m uvicorn ec_quote.api.main:app --port 8080   # run locally (needs .env, see .env.example)
+python3 scripts/price_audit.py --replay tests/audit/fixtures/parity  # offline 50-config price parity audit
 ```
 
-Extension (no build step): `cd extension && npm test` (`npm run test:unit`, `npm run test:browser`). One browser test has been seen to fail intermittently; rerun before investigating.
+Extension (Node 18+ built-in modules, reproducible zip build): `cd extension && npm test && npm run build` (`npm run test:unit`, `npm run test:browser`, `npm run build`).
 
 The skills pack gate applies to every pull request: all tests green, nothing skipped, the suite run twice, 95% of changed lines and branches covered, global coverage never below `.coverage-baseline.json`.
 

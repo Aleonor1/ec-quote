@@ -37,6 +37,8 @@ INTEGRATION_VARS = (
 
 
 _STAFF_NAME = re.compile(r"[A-Za-z0-9_.-]{1,40}")
+_SEMVER = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+_EXTENSION_ORIGIN = re.compile(r"^chrome-extension://[A-Za-z0-9_-]+$")
 
 
 class SettingsError(RuntimeError):
@@ -81,6 +83,8 @@ class Settings(BaseModel):
 
     # Extensia Chrome (mod asistat): perechi (nume coleg, token). Goala: rutele /v1/assist/* refuza tot.
     assist_tokens: tuple[tuple[str, SecretStr], ...] = ()
+    min_extension_version: str = ""
+    extension_origins: tuple[str, ...] = ()
 
     # Integrari (folosite de modulele surori)
     calculator_base_url: str = ""
@@ -181,6 +185,12 @@ def load_settings(env: Mapping[str, str] | None = None, *,
     origins = _csv(get("EC_QUOTE_CORS_ORIGINS"))
     if any(o == "*" or not o.startswith(("https://", "http://")) or o.endswith("/") for o in origins):
         invalid.append("EC_QUOTE_CORS_ORIGINS (origini exacte, de forma https://domeniu, fara / la final)")
+    extension_origins = _csv(get("EC_QUOTE_EXTENSION_ORIGINS"))
+    if any(not _EXTENSION_ORIGIN.fullmatch(o) for o in extension_origins):
+        invalid.append("EC_QUOTE_EXTENSION_ORIGINS (origini de forma chrome-extension://<id>, fara / la final)")
+    min_extension_version = get("EC_QUOTE_MIN_EXTENSION_VERSION")
+    if min_extension_version and not _SEMVER.fullmatch(min_extension_version):
+        invalid.append("EC_QUOTE_MIN_EXTENSION_VERSION (versiune asteptata de forma major.minor.patch)")
     public_base_url = get("EC_QUOTE_PUBLIC_BASE_URL").rstrip("/")
     if public_base_url and not public_base_url.startswith(("https://", "http://")):
         invalid.append("EC_QUOTE_PUBLIC_BASE_URL (URL complet)")
@@ -206,6 +216,8 @@ def load_settings(env: Mapping[str, str] | None = None, *,
         chat_require_secret=_flag(get("EC_QUOTE_CHAT_REQUIRE_SECRET")),
         git_commit=get("GIT_COMMIT") or None,
         assist_tokens=tuple(assist_tokens),
+        min_extension_version=min_extension_version,
+        extension_origins=extension_origins,
         attachment_hosts=tuple(h.lower() for h in _csv(get("EC_QUOTE_ATTACHMENT_HOSTS"))),
         allowed_mimes=tuple(m.lower() for m in _csv(get("EC_QUOTE_ALLOWED_MIMES")))
         or DEFAULT_ALLOWED_MIMES,

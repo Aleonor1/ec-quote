@@ -225,12 +225,19 @@ class Engine(Protocol):
 # Extensia citeste conversatia deschisa si cere o sugestie. Nimic nu pleaca automat:
 # omul insereaza textul in caseta WhatsApp si apasa el Trimite.
 
+class PendingAttachment(BaseModel):
+    kind: Literal["image", "document"]
+    filename: str | None = None
+
+
 class AssistMessage(BaseModel):
     id: str                               # id-ul mesajului din WhatsApp Web (stabil)
     direction: Literal["in", "out"]       # in = client, out = noi (om)
     text: str = ""
+    quoted_text: str | None = None
     sent_at: datetime | None = None
     attachments: list[Attachment] = Field(default_factory=list)
+    unuploaded_attachments: list[PendingAttachment] = Field(default_factory=list)
 
 
 class AssistSuggestion(BaseModel):

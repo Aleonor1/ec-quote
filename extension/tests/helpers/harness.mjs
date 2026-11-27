@@ -66,7 +66,7 @@ export const QUESTION_SUGGESTION = {
 // Mock of the ec-quote assist API. It sends CORS headers because the test profile has
 // no granted host permission for 127.0.0.1 (that prompt needs a person).
 export async function startMockBackend() {
-  const state = { requests: [], suggest: null, suggestDelayMs: 0 };
+  const state = { requests: [], suggest: null, suggestDelayMs: 0, minExtensionVersion: '', requireUpdate: false };
   const offerPng = await fs.readFile(path.join(FIXTURES_DIR, 'offer.png'));
 
   const server = http.createServer(async (req, res) => {
@@ -76,12 +76,19 @@ export async function startMockBackend() {
     const url = new URL(req.url, 'http://127.0.0.1');
     const cors = {
       'Access-Control-Allow-Origin': req.headers.origin || '*',
-      'Access-Control-Allow-Headers': 'content-type, x-ecquote-assist-token',
+      'Access-Control-Allow-Headers': 'content-type, x-ecquote-assist-token, x-ecquote-extension-version',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     };
     if (req.method === 'OPTIONS') return res.writeHead(204, cors).end();
 
-    const record = { method: req.method, path: url.pathname, token: req.headers['x-ecquote-assist-token'] || null, body: null, raw };
+    const record = {
+      method: req.method,
+      path: url.pathname,
+      token: req.headers['x-ecquote-assist-token'] || null,
+      version: req.headers['x-ecquote-extension-version'] || null,
+      body: null,
+      raw,
+    };
     if ((req.headers['content-type'] || '').includes('application/json')) record.body = JSON.parse(raw.toString('utf8') || 'null');
     state.requests.push(record);
 
@@ -90,7 +97,17 @@ export async function startMockBackend() {
 
     if (url.pathname === '/offer.png') return res.writeHead(200, { ...cors, 'Content-Type': 'image/png' }).end(offerPng);
     if (record.token !== TOKEN) return send(401, { error: { code: 'invalid_token', message: 'raw backend text that must not be shown' } });
-    if (url.pathname === '/v1/assist/ping') return send(200, { ok: true, staff: 'Ioana' });
+    if (url.pathname === '/v1/assist/ping') {
+      return send(200, {
+        ok: true,
+        staff: 'Ioana',
+        backend_version: '0.1.0',
+        min_extension_version: state.minExtensionVersion,
+      });
+    }
+    if (state.requireUpdate) {
+      return send(426, { error: { code: 'extension_update_required', message: 'update', min_extension_version: '9.0.0' } });
+    }
     if (url.pathname === '/v1/assist/suggest') {
       if (state.suggestDelayMs) await new Promise((resolve) => setTimeout(resolve, state.suggestDelayMs));
       const reply = state.suggest ? state.suggest(record.body, base) : { status: 200, body: { suggestion: { ...OFFER_SUGGESTION, image_url: `${base}/offer.png` } } };
@@ -115,6 +132,7 @@ export async function startMockBackend() {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return {
     state,
+    offerPng,
     url: `http://127.0.0.1:${server.address().port}`,
     close: () => new Promise((resolve) => server.close(resolve)),
   };
@@ -133,7 +151,11 @@ export async function launchWithExtension({ viewport = { width: 1360, height: 82
   let [worker] = context.serviceWorkers();
   if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 15_000 });
   const extensionId = new URL(worker.url()).host;
-  // The install handler opens the options page; tests do not need that tab.
+  // Wait briefly for onInstalled's options tab if opened, and close stray options tabs so tests stay isolated.
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  for (const p of context.pages()) {
+    if (p.url().startsWith(`chrome-extension://${extensionId}/`)) await p.close().catch(() => {});
+  }
   const configure = async (settings) => {
     const sw = context.serviceWorkers()[0] || (await context.waitForEvent('serviceworker'));
     await sw.evaluate((values) => chrome.storage.local.set(values), settings);

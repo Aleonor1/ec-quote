@@ -1,0 +1,281 @@
+{
+  "case_id": "case-22",
+  "url": "https://calculator.example.invalid/api/sync/line",
+  "choices": {
+    "product_id": "gid://shopify/Product/1002",
+    "material_name": "Hârtie Albă Lucioasă",
+    "shape": "circle",
+    "width_cm": "7",
+    "height_cm": "7",
+    "quantity": 500,
+    "add_ons": {},
+    "adhesive": "standard",
+    "white_print": false,
+    "cut": "none",
+    "urgent": false,
+    "file_editing": "none",
+    "instructions": ""
+  },
+  "request": {
+    "productId": "gid://shopify/Product/1002",
+    "materialName": "Hârtie Albă Lucioasă",
+    "shape": "circle",
+    "widthCm": 7,
+    "heightCm": 7,
+    "quantity": 500,
+    "addOns": {},
+    "adhesive": "standard",
+    "whitePrint": false,
+    "cut": "none",
+    "urgent": false,
+    "fileEditing": "none",
+    "instructions": ""
+  },
+  "status_code": 200,
+  "response": {
+    "status": "priced",
+    "total": 543,
+    "base": 517.5,
+    "unitPrice": 1.09,
+    "capQuantity": null,
+    "pricingPath": "A",
+    "flatBaselinePct": 0,
+    "breakdown": {
+      "tablePrice": 1.38,
+      "fullPrice": 715,
+      "discount": 172,
+      "options": 0,
+      "urgency": 0,
+      "fileEditing": 0,
+      "setupFee": 25,
+      "discountPercent": 25,
+      "quantityDiscountPercent": 25,
+      "promoPercent": 0,
+      "promoMode": "replace",
+      "flatPercent": 0,
+      "addOnPercent": 0,
+      "adhesivePercent": 0,
+      "whitePrintPercent": 0,
+      "cutPercent": 0,
+      "freeSample": false
+    },
+    "properties": [
+      {
+        "name": "_Sticker Quantity",
+        "value": "500"
+      },
+      {
+        "name": "Forma Taiere",
+        "value": "circle"
+      },
+      {
+        "name": "Dimensiune",
+        "value": "7 x 7 CM"
+      },
+      {
+        "name": "Material",
+        "value": "Hârtie Albă Lucioasă"
+      },
+      {
+        "name": "Cantitate",
+        "value": "500 buc"
+      },
+      {
+        "name": "_calculator_price",
+        "value": "543"
+      },
+      {
+        "name": "_calculator_area",
+        "value": "49"
+      },
+      {
+        "name": "_price_per_unit",
+        "value": "1.09"
+      },
+      {
+        "name": "_product_gid",
+        "value": "gid://shopify/Product/1002"
+      }
+    ]
+  },
+  "recorded": {
+    "status": "priced",
+    "total": "543",
+    "total_ex_vat": "448.76",
+    "unit_price": "1.09"
+  },
+  "tiers": [
+    {
+      "quantity": 1000,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1002",
+        "materialName": "Hârtie Albă Lucioasă",
+        "shape": "circle",
+        "widthCm": 7,
+        "heightCm": 7,
+        "quantity": 1000,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 881,
+        "base": 855.6,
+        "unitPrice": 0.88,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 1.38,
+          "fullPrice": 1405,
+          "discount": 524,
+          "options": 0,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 38,
+          "quantityDiscountPercent": 38,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "1000"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "circle"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "7 x 7 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Hârtie Albă Lucioasă"
+          },
+          {
+            "name": "Cantitate",
+            "value": "1000 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "881"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "49"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "0.88"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1002"
+          }
+        ]
+      }
+    },
+    {
+      "quantity": 5000,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1002",
+        "materialName": "Hârtie Albă Lucioasă",
+        "shape": "circle",
+        "widthCm": 7,
+        "heightCm": 7,
+        "quantity": 5000,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 3130,
+        "base": 3105,
+        "unitPrice": 0.63,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 1.38,
+          "fullPrice": 6925,
+          "discount": 3795,
+          "options": 0,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 55,
+          "quantityDiscountPercent": 55,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "5000"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "circle"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "7 x 7 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Hârtie Albă Lucioasă"
+          },
+          {
+            "name": "Cantitate",
+            "value": "5000 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "3130"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "49"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "0.63"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1002"
+          }
+        ]
+      }
+    }
+  ]
+}

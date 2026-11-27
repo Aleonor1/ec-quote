@@ -33,7 +33,9 @@ def upload(ctx, message_id: str = "wamid.1", name: str = "logo.png") -> str:
 
 
 def test_upload_offer_image_payment_link_resend_and_knowledge(ctx):
-    assert ctx.client.get("/v1/assist/ping", headers=ANA).json() == {"ok": True, "staff": "ana"}
+    assert ctx.client.get("/v1/assist/ping", headers=ANA).json() == {
+        "ok": True, "staff": "ana", "backend_version": "0.1.0", "min_extension_version": "",
+    }
 
     # 1. Logo incarcat, cerere completa, oferta din calculator cu imagine servita prin ruta semnata.
     customer(ctx, "Buna ziua, vreau 500 stickere rotunde de 5 cm pentru borcane", upload_id=upload(ctx))

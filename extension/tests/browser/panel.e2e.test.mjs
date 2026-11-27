@@ -5,7 +5,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
-  FIXTURES_DIR,
   OFFER_SUGGESTION,
   QUESTION_SUGGESTION,
   SCREENSHOT_DIR,
@@ -29,15 +28,21 @@ after(async () => {
   await backend?.close();
 });
 beforeEach(async () => {
+  for (const p of ext.context.pages()) {
+    if (p.url() !== 'about:blank') await p.close().catch(() => {});
+  }
   backend.state.requests.length = 0;
   backend.state.suggest = null;
   backend.state.suggestDelayMs = 0;
+  backend.state.minExtensionVersion = '';
+  backend.state.requireUpdate = false;
   await ext.configure({ baseUrl: backend.url, token: TOKEN, enabled: true, mode: 'auto', panelCollapsed: false });
 });
 
 async function open(fixture = 'chat-individual.html', query = '') {
   const page = await ext.context.newPage();
   await page.goto(`${WHATSAPP}/${fixture}${query}`);
+  await page.evaluate(() => window.__wa?.imagesReady);
   await page.locator(ROOT).waitFor({ state: 'attached' });
   return page;
 }
@@ -47,23 +52,44 @@ const sendState = (page) => page.evaluate(() => ({ sent: window.__wa.sent, sendC
 const composerText = (page) => page.locator('footer [contenteditable="true"]').innerText();
 const shot = (page, name) => page.screenshot({ path: path.join(SCREENSHOT_DIR, name) });
 
+async function waitForSuggestCount(expected, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  while (suggestCalls().length < expected) {
+    if (Date.now() > deadline) {
+      assert.fail(`Timed out waiting for ${expected} suggest calls (got ${suggestCalls().length})`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
 async function assertNothingSent(page) {
   assert.deepEqual(await sendState(page), { sent: [], sendClicks: 0, enterKeys: 0 });
 }
 
-test('renders an offer suggestion for the open chat', async () => {
+test('renders an offer suggestion for the open chat with clean contract fields', async () => {
   const page = await open();
   const panel = page.locator(ROOT);
   await panel.locator('textarea').waitFor();
 
-  // Request: token header, chat identity, the visible messages.
+  // Request: token & version headers, chat identity, structured quoted_text & unuploaded_attachments.
   const [call] = suggestCalls();
   assert.equal(call.token, TOKEN);
+  assert.equal(call.version, '0.1.0');
   assert.deepEqual(call.body.chat, { key: '40722123456', name: 'Maria Ionescu', phone: '+40722123456' });
   assert.equal(call.body.messages.length, 4);
   assert.deepEqual(call.body.messages.map((m) => m.direction), ['in', 'out', 'in', 'in']);
-  assert.equal(call.body.messages[2].text, '[Răspuns la: "Pe ce material le doriți: hârtie lucioasă sau vinil?"]\nHârtie lucioasă 🙂 cu laminare mată\nMulțumesc!');
-  assert.deepEqual(Object.keys(call.body.messages[0]).sort(), ['attachments', 'direction', 'id', 'sent_at', 'text']);
+  assert.equal(call.body.messages[2].text, 'Hârtie lucioasă 🙂 cu laminare mată\nMulțumesc!');
+  assert.equal(call.body.messages[2].quoted_text, 'Pe ce material le doriți: hârtie lucioasă sau vinil?');
+  assert.deepEqual(call.body.messages[3].unuploaded_attachments, [{ kind: 'image', filename: null }]);
+  assert.deepEqual(Object.keys(call.body.messages[0]).sort(), [
+    'attachments',
+    'direction',
+    'id',
+    'quoted_text',
+    'sent_at',
+    'text',
+    'unuploaded_attachments',
+  ]);
 
   // Panel content.
   assert.equal(await panel.locator('.chat').innerText(), 'Maria Ionescu');
@@ -77,6 +103,7 @@ test('renders an offer suggestion for the open chat', async () => {
   assert.deepEqual(await panel.locator('tbody tr[data-highlighted="true"] td').allInnerTexts(), ['1000', '0,2800', '280,00', '333,20']);
   await panel.locator('.image-box img').waitFor();
   assert.ok(await panel.locator('.image-box img').evaluate((img) => img.complete && img.naturalWidth === 800));
+  assert.equal(await panel.getByRole('button', { name: 'Atașează imaginea' }).count(), 1);
   assert.equal(await panel.getByRole('button', { name: 'Copiază imaginea' }).count(), 1);
   assert.equal(await panel.getByRole('button', { name: 'Descarcă' }).count(), 1);
   assert.equal(await panel.getByRole('button', { name: 'Generează link de plată' }).count(), 1);
@@ -90,7 +117,7 @@ test('renders an offer suggestion for the open chat', async () => {
   await page.close();
 });
 
-test('"Inserează în mesaj" fills the composer and sends nothing', async () => {
+test('"Inserează în mesaj" fills the composer across paste, beforeinput, and execCommand paths and sends nothing', async () => {
   const page = await open();
   const panel = page.locator(ROOT);
   await panel.locator('textarea').waitFor();
@@ -100,22 +127,73 @@ test('"Inserează în mesaj" fills the composer and sends nothing', async () => 
 
   assert.equal(await composerText(page), 'Bună ziua!\nOferta este mai jos.');
   assert.equal(await page.evaluate(() => window.__wa.pastes), 1);
-  await page.waitForTimeout(600);
   await assertNothingSent(page);
 
-  // A draft already in the box is never overwritten silently.
-  await panel.locator('textarea').fill('Text nou');
+  // A draft already in the box is never overwritten silently; test Lexical beforeinput fallback.
+  await page.evaluate(() => { window.__wa.composerMode = 'beforeinput'; });
+  await panel.locator('textarea').fill('Linia unu\nLinia doi');
   await panel.getByRole('button', { name: 'Inserează în mesaj' }).click();
   const confirm = panel.locator('.confirm');
   assert.match(await confirm.innerText(), /Caseta de mesaj conține deja text/);
   await confirm.getByRole('button', { name: 'Înlocuiește' }).click();
-  await page.waitForFunction(() => document.querySelector('footer [contenteditable="true"]').innerText.trim() === 'Text nou');
-  await page.waitForTimeout(400);
+  await page.waitForFunction(() => document.querySelector('footer [contenteditable="true"]').innerText.includes('Linia doi'));
+  assert.ok((await page.evaluate(() => window.__wa.beforeInputs)) >= 2);
+  await assertNothingSent(page);
+
+  // Fallback 2: execCommand when both paste and beforeinput are ignored.
+  await page.evaluate(() => {
+    window.__wa.composerMode = 'execCommand';
+    document.querySelector('footer [contenteditable="true"]').replaceChildren();
+  });
+  await panel.locator('textarea').fill('Text prin execCommand');
+  await panel.getByRole('button', { name: 'Inserează în mesaj' }).click();
+  await page.waitForFunction(() => document.querySelector('footer [contenteditable="true"]').innerText.trim() === 'Text prin execCommand');
   await assertNothingSent(page);
 
   // Sanity check of the fixture itself: a real click on Send is what gets recorded.
   await page.locator('footer button[aria-label="Trimite"]').click();
-  assert.deepEqual(await sendState(page), { sent: ['Text nou'], sendClicks: 1, enterKeys: 0 });
+  assert.deepEqual(await sendState(page), { sent: ['Text prin execCommand'], sendClicks: 1, enterKeys: 0 });
+  await page.close();
+});
+
+test('"Atașează imaginea" places neutral oferta.png and caption in WhatsApp preview, asks on draft, and falls back safely', async () => {
+  const page = await open();
+  const panel = page.locator(ROOT);
+  await panel.locator('.image-box img').waitFor();
+
+  // Attach image when composer is empty.
+  await panel.getByRole('button', { name: 'Atașează imaginea' }).click();
+  await panel.locator('.notice').filter({ hasText: 'Imaginea ofertei a fost atașată' }).waitFor();
+
+  const attached = await page.evaluate(() => window.__wa.attachedFiles);
+  assert.equal(attached.length, 1);
+  assert.equal(attached[0].name, 'oferta.png');
+  assert.equal(attached[0].type, 'image/png');
+  assert.equal(Buffer.compare(Buffer.from(attached[0].bytes), backend.offerPng), 0, 'bytes match backend offer PNG');
+  const caption = await page.locator('[data-wa-media-caption="true"]').innerText();
+  assert.match(caption, /500 buc: 214,20 lei/);
+  await assertNothingSent(page);
+
+  // When composer has a draft, attaching asks confirmation first.
+  await page.evaluate(() => {
+    document.querySelector('[data-wa-media-preview]')?.remove();
+    document.querySelector('footer [contenteditable="true"]').textContent = 'Ciornă operator';
+  });
+  await panel.getByRole('button', { name: 'Atașează imaginea' }).click();
+  const confirm = panel.locator('.confirm');
+  assert.match(await confirm.innerText(), /Caseta de mesaj conține deja text/);
+  await confirm.getByRole('button', { name: 'Renunță' }).click();
+  assert.equal((await page.evaluate(() => window.__wa.attachedFiles)).length, 1, 'cancelled attach does nothing');
+
+  // Fallback when WhatsApp's preview caption cannot be found.
+  await page.evaluate(() => {
+    document.querySelector('footer [contenteditable="true"]').replaceChildren();
+    window.__wa.disableMediaCaption = true;
+  });
+  await panel.getByRole('button', { name: 'Atașează imaginea' }).click();
+  await panel.locator('.notice[data-tone="error"]').waitFor();
+  assert.match(await panel.locator('.notice').innerText(), /Copiază imaginea/);
+  await assertNothingSent(page);
   await page.close();
 });
 
@@ -174,7 +252,7 @@ test('a new customer message refreshes the suggestion; edits are not overwritten
   backend.state.suggest = () => ({ status: 200, body: { suggestion: QUESTION_SUGGESTION } });
   await page.evaluate(() => window.__wa.addIncoming('Și cât costă 2000 de bucăți?'));
   await panel.locator('.badge').filter({ hasText: 'Întrebare pentru client' }).waitFor();
-  assert.equal(suggestCalls().length, 2);
+  await waitForSuggestCount(2);
   assert.equal(suggestCalls()[1].body.messages.at(-1).text, 'Și cât costă 2000 de bucăți?');
   assert.deepEqual(await panel.locator('.chip').allInnerTexts(), ['Rotundă', 'Pătrată', 'Dreptunghiulară']);
   await shot(page, 'panel-light-question.png');
@@ -189,7 +267,8 @@ test('a new customer message refreshes the suggestion; edits are not overwritten
   assert.equal(suggestCalls().length, 2);
   assert.match(await panel.locator('textarea').inputValue(), /\nRotundă$/);
   await panel.locator('.banner').getByRole('button', { name: 'Actualizează' }).click();
-  await page.waitForFunction(() => true);
+  await waitForSuggestCount(3);
+  await panel.locator('textarea').waitFor();
   await assert.doesNotReject(panel.locator('.banner').waitFor({ state: 'hidden' }));
   assert.equal(suggestCalls().length, 3);
 
@@ -201,7 +280,7 @@ test('a new customer message refreshes the suggestion; edits are not overwritten
   await page.close();
 });
 
-test('backend errors show short Romanian messages, never raw text', async () => {
+test('backend errors and 426 version upgrade show short Romanian messages, never raw text', async () => {
   backend.state.suggest = () => ({ status: 503, body: { error: { code: 'assist_unavailable', message: 'upstream model timeout: raw detail' } } });
   const page = await open();
   const panel = page.locator(ROOT);
@@ -215,10 +294,19 @@ test('backend errors show short Romanian messages, never raw text', async () => 
   await panel.getByRole('button', { name: 'Încearcă din nou' }).click();
   await panel.getByText('Prea multe cereri').waitFor();
 
+  // Saving a new token in Options refreshes open WhatsApp tabs automatically.
   await ext.configure({ token: 'wrong-token' });
-  await panel.getByRole('button', { name: 'Încearcă din nou' }).click();
   await panel.getByText('Token invalid sau expirat').waitFor();
   assert.equal(await panel.getByRole('button', { name: 'Deschide opțiunile' }).count(), 1);
+
+  // 426 Upgrade Required stops further automatic requests and shows "Actualizați extensia".
+  backend.state.requireUpdate = true;
+  await ext.configure({ token: TOKEN });
+  await panel.getByText('Actualizați extensia').waitFor();
+  const beforeCount = suggestCalls().length;
+  await page.evaluate(() => window.__wa.addIncoming('Mesaj nou după 426'));
+  await page.waitForTimeout(700);
+  assert.equal(suggestCalls().length, beforeCount, 'outdated extension stops requesting suggestions');
   await page.close();
 });
 
@@ -246,12 +334,13 @@ test('customer image: "Trimite fișierul la verificare" uploads the loaded blob'
   assert.match(raw, /name="message_id"\r\n\r\nfalse_40722123456@c\.us_3EB0F1A2B3C4D5E6F7B9\r\n/);
   assert.match(raw, /name="file"; filename="imagine\.png"\r\nContent-Type: image\/png\r\n\r\n\x89PNG/);
 
-  // The next suggest call references the upload on that message.
-  await page.waitForFunction(() => true);
+  // The next suggest call references the upload on that message and clears unuploaded_attachments.
+  await waitForSuggestCount(2);
   await panel.locator('textarea').waitFor();
   const last = suggestCalls().at(-1);
   assert.equal(suggestCalls().length, 2);
   assert.deepEqual(last.body.messages.at(-1).attachments, [{ upload_id: 'up_test_1' }]);
+  assert.deepEqual(last.body.messages.at(-1).unuploaded_attachments, []);
   assert.match(await panel.locator('.attach-info').innerText(), /a fost trimis la verificare/);
   await page.close();
 });
@@ -261,12 +350,14 @@ test('document without a loaded blob: manual path through the file picker', asyn
   const panel = page.locator(ROOT);
   await panel.locator('textarea').waitFor();
   assert.deepEqual(suggestCalls()[0].body.chat, { key: '184467440737095@lid', name: 'Andrei P.', phone: null });
-  assert.equal(suggestCalls()[0].body.messages[1].text, '[document] eticheta-vin.pdf');
+  assert.equal(suggestCalls()[0].body.messages[1].text, '');
+  assert.deepEqual(suggestCalls()[0].body.messages[1].unuploaded_attachments, [{ kind: 'document', filename: 'eticheta-vin.pdf' }]);
   assert.match(await panel.locator('.attach-info').innerText(), /Descărcați-l din WhatsApp, apoi trageți-l mai jos/);
   assert.equal(await panel.getByRole('button', { name: 'Trimite fișierul la verificare' }).count(), 0, 'no automatic read without a blob');
 
   await panel.locator('input[type="file"]').setInputFiles({ name: 'eticheta-vin.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
   await panel.locator('.attach-status[data-tone="ok"]').waitFor();
+  await waitForSuggestCount(2);
   const [upload] = backend.state.requests.filter((r) => r.path === '/v1/assist/upload');
   const raw = upload.raw.toString('latin1');
   assert.match(raw, /name="message_id"\r\n\r\nfalse_184467440737095@lid_3A5F00C1D2E3F4A5B6C8\r\n/);
@@ -293,6 +384,7 @@ test('the panel never covers the composer, collapses, and remembers it', async (
   await shot(page, 'panel-collapsed.png');
 
   await page.reload();
+  await page.evaluate(() => window.__wa?.imagesReady);
   await page.locator(ROOT).waitFor({ state: 'attached' });
   await page.waitForFunction(() => document.querySelector('#ecq-assist-root').getBoundingClientRect().width === 40);
   await panel.getByRole('button', { name: 'Deschide asistentul de ofertare' }).click();
@@ -307,7 +399,7 @@ test('keyboard: every action is reachable with Tab and has a visible focus ring'
   await panel.locator('.image-box img').waitFor();
   await panel.getByRole('button', { name: 'Restrânge panoul' }).focus();
   const seen = [];
-  for (let i = 0; i < 14; i += 1) {
+  for (let i = 0; i < 16; i += 1) {
     await page.keyboard.press('Tab');
     const info = await page.evaluate(() => {
       const active = document.querySelector('#ecq-assist-root').shadowRoot.activeElement;
@@ -319,7 +411,7 @@ test('keyboard: every action is reachable with Tab and has a visible focus ring'
     seen.push(info);
   }
   const labels = seen.map((s) => s.label);
-  for (const expected of ['textarea', 'Copiază imaginea', 'Descarcă', 'Inserează în mesaj', 'Copiază textul', 'Altă sugestie', 'Generează link de plată', 'Opțiuni']) {
+  for (const expected of ['textarea', 'Atașează imaginea', 'Copiază imaginea', 'Descarcă', 'Inserează în mesaj', 'Copiază textul', 'Altă sugestie', 'Generează link de plată', 'Opțiuni']) {
     assert.ok(labels.includes(expected), `Tab reaches "${expected}" (got ${labels.join(' | ')})`);
   }
   assert.ok(seen.every((s) => s.outline), 'focused controls show an outline');
@@ -404,7 +496,7 @@ test('dark theme follows WhatsApp', async () => {
   await light.close();
 });
 
-test('options page: ping through the worker, the saved token is never rendered', async () => {
+test('options page: permission prompt gate on "Testează conexiunea", version check, and token secrecy', async () => {
   const page = await ext.context.newPage();
   await page.goto(`chrome-extension://${ext.extensionId}/options/options.html`);
   assert.equal(await page.locator('#baseUrl').inputValue(), backend.url);
@@ -414,11 +506,40 @@ test('options page: ping through the worker, the saved token is never rendered',
   assert.equal(await page.locator('#enabled').isChecked(), true);
   assert.equal(await page.locator('input[name="mode"][value="auto"]').isChecked(), true);
 
-  const ping = await page.evaluate(() => chrome.runtime.sendMessage({ type: 'ecq:ping' }));
-  assert.deepEqual(ping, { ok: true, staff: 'Ioana' });
-  const [call] = backend.state.requests;
-  assert.equal(call.path, '/v1/assist/ping');
-  assert.equal(call.token, TOKEN);
+  // 1. Permission denied on "Testează conexiunea": stops before calling ping.
+  await page.evaluate(() => {
+    window.__permCalls = [];
+    chrome.permissions.request = async (req) => {
+      window.__permCalls.push(req);
+      return false;
+    };
+  });
+  await page.getByRole('button', { name: 'Testează conexiunea' }).click();
+  await page.locator('#status[data-tone="error"]').waitFor();
+  assert.match(await page.locator('#status').innerText(), /accesul la server nu a fost acordat/);
+  assert.equal(backend.state.requests.length, 0, 'ping is not called when host permission is refused');
+
+  // 2. Permission granted on "Testează conexiunea": saves and calls /v1/assist/ping.
+  await page.evaluate(() => {
+    chrome.permissions.request = async (req) => {
+      window.__permCalls.push(req);
+      return true;
+    };
+  });
+  await page.getByRole('button', { name: 'Testează conexiunea' }).click();
+  await page.locator('#status[data-tone="ok"]').waitFor();
+  assert.equal(await page.locator('#status').innerText(), 'Conexiune reușită. Operator: Ioana.');
+  assert.equal(backend.state.requests.length, 1);
+  assert.equal(backend.state.requests[0].path, '/v1/assist/ping');
+  assert.equal(backend.state.requests[0].token, TOKEN);
+  assert.equal(backend.state.requests[0].version, '0.1.0');
+
+  // 3. Outdated extension reported by ping shows update warning.
+  backend.state.minExtensionVersion = '0.9.0';
+  await page.getByRole('button', { name: 'Testează conexiunea' }).click();
+  await page.locator('#status[data-tone="error"]').waitFor();
+  assert.match(await page.locator('#status').innerText(), /Versiunea extensiei este prea veche \(minim 0\.9\.0\)/);
+  backend.state.minExtensionVersion = '';
 
   // Validation happens before anything is saved.
   await page.locator('#baseUrl').fill('http://quote.example.ro');
@@ -432,7 +553,8 @@ test('options page: ping through the worker, the saved token is never rendered',
 
 test('content scripts cannot read the token from storage', async () => {
   const page = await open();
-  await page.locator(ROOT).locator('textarea').waitFor();
+  const panel = page.locator(ROOT);
+  await panel.locator('textarea').waitFor();
   const sw = ext.context.serviceWorkers()[0];
   const level = await sw.evaluate(async () => {
     // TRUSTED_CONTEXTS is applied at worker start; verify the stored settings shape too.
@@ -441,7 +563,27 @@ test('content scripts cannot read the token from storage', async () => {
     return { keys: Object.keys(all).sort(), sessionKeys: Object.keys(session).sort(), sessionValues: Object.values(session) };
   });
   assert.deepEqual(level.keys, ['baseUrl', 'enabled', 'mode', 'panelCollapsed', 'token']);
-  assert.ok(level.sessionKeys.every((k) => k.startsWith('lastSuggestion:')), 'session storage holds only suggestion ids');
+  assert.ok(
+    level.sessionKeys.every((k) => /^lastSuggestion:[0-9a-f]{16}$/.test(k)),
+    'session storage holds only hashed suggestion keys without raw phone digits',
+  );
+  assert.ok(level.sessionKeys.every((k) => !k.includes('40722123456')));
   assert.ok(level.sessionValues.every((v) => typeof v === 'string' && v.startsWith('sug_')));
+
+  // Replace mode in composer does not false-positive when existing draft shares >40-char prefix and paste is ignored.
+  await page.evaluate(() => {
+    const box = document.querySelector('footer [contenteditable="true"]');
+    box.textContent = 'Bună ziua! Oferta noastră pentru etichete autocolante este veche.';
+    window.__wa.composerMode = 'beforeinput';
+  });
+  await panel.locator('textarea').fill('Bună ziua! Oferta noastră pentru etichete autocolante este actualizată: 302,50 RON.');
+  await panel.getByRole('button', { name: 'Inserează în mesaj' }).click();
+  await panel.getByRole('button', { name: 'Înlocuiește' }).click();
+  await panel.locator('.notice').filter({ hasText: 'Textul a fost inserat' }).waitFor();
+  assert.equal(
+    (await page.locator('footer [contenteditable="true"]').innerText()).trim(),
+    'Bună ziua! Oferta noastră pentru etichete autocolante este actualizată: 302,50 RON.',
+  );
+  await assertNothingSent(page);
   await page.close();
 });

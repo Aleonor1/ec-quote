@@ -33,6 +33,8 @@
   let debounceTimer = null;
   let firstPending = 0;
   let appRootStyle = null; // { el, width, minWidth }
+  let lastCompatStatus = null;
+  let outdated = false;
 
   // State of the open chat only. Dropped on chat switch; nothing is persisted.
   let chat = freshChat(null);
@@ -98,7 +100,11 @@
 
   function fingerprint(convo) {
     const last = convo.messages[convo.messages.length - 1];
-    return `${convo.chat.key}|${last ? last.id : ''}|${chat.uploads.size}`;
+    const media = convo.messages
+      .filter((m) => m.attachment)
+      .map((m) => `${m.id}:${m.attachment.type}`)
+      .join(',');
+    return `${convo.chat.key}|${last ? last.id : ''}|${chat.uploads.size}|${media}`;
   }
 
   function attachmentTarget(convo) {
@@ -145,7 +151,19 @@
     if (shown.image_url && !(options && options.keepImage)) loadImage(shown);
   }
 
+  function showUpdateRequired() {
+    outdated = true;
+    chat.viewKey = 'update_required';
+    panel.showState({
+      tone: 'error',
+      title: 'Actualizați extensia',
+      text: 'Versiunea instalată este mai veche decât minimul cerut de server. Instalați ultima versiune pentru a continua.',
+      action: { label: 'Deschide opțiunile', run: () => send({ type: 'ecq:open-options' }) },
+    });
+  }
+
   async function requestSuggestion(immediate) {
+    if (outdated) return showUpdateRequired();
     const convo = chat.convo;
     if (!convo || !convo.supported || !convo.chat || !convo.messages.length) return;
     const seq = (chat.seq += 1);
@@ -166,6 +184,7 @@
 
     if (response.ok) return showSuggestion(response.suggestion);
     if (response.aborted) return showIdle(convo);
+    if (response.error.code === 'update_required') return showUpdateRequired();
     chat.viewKey = 'error';
     panel.showState({
       tone: 'error',
@@ -195,7 +214,12 @@
   function refresh() {
     if (!panel) return;
     const convo = Reader.readConversation();
-    panel.setCompat(Reader.selfTest());
+    const compat = Reader.selfTest();
+    panel.setCompat(compat);
+    if (compat.status !== lastCompatStatus) {
+      lastCompatStatus = compat.status;
+      send({ type: 'ecq:compat-status', status: compat.status });
+    }
     panel.setTheme(detectTheme());
     applyLayout();
 
@@ -215,6 +239,7 @@
         action: { label: 'Deschide opțiunile', run: () => send({ type: 'ecq:open-options' }) },
       });
     }
+    if (outdated) return showUpdateRequired();
     if (!convo.open || !convo.chat) {
       return showStateOnce('nochat', { title: 'Nicio conversație deschisă', text: 'Deschideți o conversație pentru a primi o sugestie de răspuns.' });
     }
@@ -272,12 +297,43 @@
     ]);
   }
 
+  async function doAttachImage(blob, captionText) {
+    const owner = chat;
+    const active = panel && panel.suggestion();
+    panel.setBusy(true);
+    try {
+      const png = await Media.toPng(blob);
+      if (owner !== chat || !panel || panel.suggestion() !== active) return;
+      const result = await Composer.attachImage(png, captionText);
+      if (owner !== chat || !panel) return;
+      if (result.ok) {
+        panel.notify('Imaginea ofertei a fost atașată în previzualizarea WhatsApp. Verificați și trimiteți dvs.');
+      } else {
+        panel.notify('Previzualizarea WhatsApp nu a apărut. Folosiți „Copiază imaginea” sau „Descarcă”, iar pentru text „Inserează în mesaj”.', 'error');
+      }
+    } catch {
+      if (owner === chat && panel) {
+        panel.notify('Imaginea nu a putut fi atașată automat. Folosiți „Copiază imaginea” sau „Descarcă”.', 'error');
+      }
+    } finally {
+      if (owner === chat && panel) panel.setBusy(false);
+    }
+  }
+
+  function onAttachImage(blob, captionText) {
+    if (!blob) return panel.notify('Imaginea ofertei nu este încărcată.', 'error');
+    if (!Composer.hasDraft()) return void doAttachImage(blob, captionText);
+    panel.confirm('Caseta de mesaj conține deja text. Atașarea imaginii va pune textul ofertei în câmpul de descriere.', [
+      { label: 'Atașează imaginea', primary: true, run: () => doAttachImage(blob, captionText) },
+    ]);
+  }
+
   async function onPaymentLink(text) {
     const suggestion = panel.suggestion();
     if (!suggestion || !chat.key) return;
     const owner = chat;
     panel.setBusy(true);
-    panel.notify('Se creează linkul de plată…', 'info', true);
+    panel.notify('Se creează linkul de plată...', 'info', true);
     const response = await send({
       type: 'ecq:payment-link',
       chatKey: chat.key,
@@ -286,7 +342,10 @@
     });
     if (owner !== chat || !panel) return;
     panel.setBusy(false);
-    if (!response.ok) return panel.notify(response.error.message, 'error');
+    if (!response.ok) {
+      if (response.error.code === 'update_required') return showUpdateRequired();
+      return panel.notify(response.error.message, 'error');
+    }
     const next = { ...response.suggestion, image_url: response.suggestion.image_url || suggestion.image_url };
     showSuggestion(next, { keepImage: next.image_url === suggestion.image_url });
     panel.notify('Linkul de plată a fost creat. Textul de mai jos îl conține.');
@@ -302,11 +361,14 @@
     if (blob.size > Media.MAX_BYTES) {
       return setAttach({ busy: false, tone: 'error', status: 'Fișierul este prea mare pentru a fi trimis din extensie (maximum 15 MB).' });
     }
-    setAttach({ busy: true, tone: 'info', status: 'Se trimite fișierul la verificare…' });
+    setAttach({ busy: true, tone: 'info', status: 'Se trimite fișierul la verificare...' });
     const base64 = await Media.blobToBase64(blob);
     const response = await send({ type: 'ecq:upload', chatKey: owner.key, messageId, fileName, mime: blob.type, base64 });
     if (owner !== chat || !panel) return;
-    if (!response.ok) return setAttach({ busy: false, tone: 'error', status: response.error.message });
+    if (!response.ok) {
+      if (response.error.code === 'update_required') showUpdateRequired();
+      return setAttach({ busy: false, tone: 'error', status: response.error.message });
+    }
     chat.uploads.set(messageId, response.upload_id);
     setAttach({ busy: false, tone: 'ok', status: 'Fișierul a fost trimis la verificare.' });
     if (panel.suggestion() && panel.isDirty()) panel.setStale(true);
@@ -348,6 +410,7 @@
     panel = Panel.create({
       request: () => requestSuggestion(true),
       insert: onInsert,
+      attachImage: onAttachImage,
       paymentLink: onPaymentLink,
       collapse: onCollapse,
       uploadFromChat: onUploadFromChat,
@@ -357,7 +420,13 @@
     panel.setCollapsed(settings.collapsed);
     document.documentElement.append(panel.host);
     observer = new MutationObserver(scheduleRefresh);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['src', 'href'],
+    });
     // Theme switches change attributes on <html> or <body> only.
     themeObserver = new MutationObserver(scheduleRefresh);
     themeObserver.observe(document.documentElement, { attributes: true });
@@ -372,6 +441,7 @@
     themeObserver.disconnect();
     observer = null;
     themeObserver = null;
+    lastCompatStatus = null;
     clearTimeout(debounceTimer);
     window.removeEventListener('resize', scheduleRefresh);
     if (chat.key) send({ type: 'ecq:cancel', chatKey: chat.key });
@@ -384,9 +454,11 @@
   function applySettings(next) {
     const collapsed = settings ? settings.collapsed : next.collapsed;
     settings = { ...next, collapsed };
+    outdated = false;
     if (!settings.enabled) return unmount();
     if (!panel) return mount();
     chat.viewKey = null;
+    chat.requestedFp = null;
     refresh();
   }
 

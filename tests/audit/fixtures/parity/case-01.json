@@ -1,0 +1,281 @@
+{
+  "case_id": "case-01",
+  "url": "https://calculator.example.invalid/api/sync/line",
+  "choices": {
+    "product_id": "gid://shopify/Product/1003",
+    "material_name": "Vinil Holografic",
+    "shape": "circle",
+    "width_cm": "7",
+    "height_cm": "7",
+    "quantity": 150,
+    "add_ons": {},
+    "adhesive": "standard",
+    "white_print": false,
+    "cut": "none",
+    "urgent": false,
+    "file_editing": "none",
+    "instructions": ""
+  },
+  "request": {
+    "productId": "gid://shopify/Product/1003",
+    "materialName": "Vinil Holografic",
+    "shape": "circle",
+    "widthCm": 7,
+    "heightCm": 7,
+    "quantity": 150,
+    "addOns": {},
+    "adhesive": "standard",
+    "whitePrint": false,
+    "cut": "none",
+    "urgent": false,
+    "fileEditing": "none",
+    "instructions": ""
+  },
+  "status_code": 200,
+  "response": {
+    "status": "priced",
+    "total": 700,
+    "base": 675,
+    "unitPrice": 4.67,
+    "capQuantity": null,
+    "pricingPath": "A",
+    "flatBaselinePct": 0,
+    "breakdown": {
+      "tablePrice": 5,
+      "fullPrice": 775,
+      "discount": 75,
+      "options": 0,
+      "urgency": 0,
+      "fileEditing": 0,
+      "setupFee": 25,
+      "discountPercent": 10,
+      "quantityDiscountPercent": 10,
+      "promoPercent": 0,
+      "promoMode": "replace",
+      "flatPercent": 0,
+      "addOnPercent": 0,
+      "adhesivePercent": 0,
+      "whitePrintPercent": 0,
+      "cutPercent": 0,
+      "freeSample": false
+    },
+    "properties": [
+      {
+        "name": "_Sticker Quantity",
+        "value": "150"
+      },
+      {
+        "name": "Forma Taiere",
+        "value": "circle"
+      },
+      {
+        "name": "Dimensiune",
+        "value": "7 x 7 CM"
+      },
+      {
+        "name": "Material",
+        "value": "Vinil Holografic"
+      },
+      {
+        "name": "Cantitate",
+        "value": "150 buc"
+      },
+      {
+        "name": "_calculator_price",
+        "value": "700"
+      },
+      {
+        "name": "_calculator_area",
+        "value": "49"
+      },
+      {
+        "name": "_price_per_unit",
+        "value": "4.67"
+      },
+      {
+        "name": "_product_gid",
+        "value": "gid://shopify/Product/1003"
+      }
+    ]
+  },
+  "recorded": {
+    "status": "priced",
+    "total": "700",
+    "total_ex_vat": "578.51",
+    "unit_price": "4.67"
+  },
+  "tiers": [
+    {
+      "quantity": 200,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1003",
+        "materialName": "Vinil Holografic",
+        "shape": "circle",
+        "widthCm": 7,
+        "heightCm": 7,
+        "quantity": 200,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 825,
+        "base": 800,
+        "unitPrice": 4.12,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 5,
+          "fullPrice": 1025,
+          "discount": 200,
+          "options": 0,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 20,
+          "quantityDiscountPercent": 20,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "200"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "circle"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "7 x 7 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Vinil Holografic"
+          },
+          {
+            "name": "Cantitate",
+            "value": "200 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "825"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "49"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "4.12"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1003"
+          }
+        ]
+      }
+    },
+    {
+      "quantity": 300,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1003",
+        "materialName": "Vinil Holografic",
+        "shape": "circle",
+        "widthCm": 7,
+        "heightCm": 7,
+        "quantity": 300,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 1105,
+        "base": 1080,
+        "unitPrice": 3.68,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 5,
+          "fullPrice": 1525,
+          "discount": 420,
+          "options": 0,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 28,
+          "quantityDiscountPercent": 28,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "300"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "circle"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "7 x 7 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Vinil Holografic"
+          },
+          {
+            "name": "Cantitate",
+            "value": "300 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "1105"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "49"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "3.68"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1003"
+          }
+        ]
+      }
+    }
+  ]
+}

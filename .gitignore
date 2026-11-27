@@ -7,6 +7,7 @@ data/
 .env
 node_modules/
 extension/screenshots/
+extension/dist/
 
 # Claude skills pack run scratch
 .claude/skills-pack/**/.run-notes/

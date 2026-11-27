@@ -42,6 +42,12 @@
     incoming: ['.message-in'],
     // Loaded image of an image message.
     image: ['img[src^="blob:"]'],
+    // Image message whose low-res preview is rendered before WhatsApp finishes loading its blob URL.
+    imagePlaceholder: [
+      '[aria-label="Deschide imaginea"] img',
+      '[aria-label="Open picture"] img',
+      '[data-testid="image-thumb"] img',
+    ],
     // Emoji and other inline images that are not attachments.
     inlineImage: ['img.emoji', 'img[data-plain-text]', 'img[draggable="false"][alt]:not([src^="blob:"])'],
     // Document bubble markers.
@@ -63,10 +69,21 @@
       'footer [data-lexical-editor="true"]',
       'footer div[contenteditable="true"]',
     ],
+    // Media attachment preview opened by WhatsApp after pasting/dropping an image, and its caption input.
+    // Never includes any button inside the preview.
+    mediaPreview: [
+      '[data-testid="media-editor"]',
+      '[aria-label="Previzualizare media"]',
+      '[aria-label="Media preview"]',
+      '[data-wa-media-preview="true"]',
+    ],
+    mediaCaption: [
+      '[data-testid="media-caption-input-container"] div[contenteditable="true"]',
+      '[aria-label="Adaugă o descriere"][contenteditable="true"]',
+      '[aria-label="Add a caption"][contenteditable="true"]',
+      '[data-wa-media-caption="true"][contenteditable="true"]',
+    ],
   };
-
-  const PLACEHOLDER_IMAGE = '[imagine]';
-  const PLACEHOLDER_DOCUMENT = '[document]';
 
   function first(root, key) {
     if (!root) return null;
@@ -157,9 +174,9 @@
     const meridiem = time[3] ? time[3].toLowerCase() : null;
     if (meridiem === 'p' && hour < 12) hour += 12;
     if (meridiem === 'a' && hour === 12) hour = 0;
-    let a = Number(date[1]);
-    let b = Number(date[2]);
-    let c = Number(date[3]);
+    const a = Number(date[1]);
+    const b = Number(date[2]);
+    const c = Number(date[3]);
     let year;
     let month;
     let day;
@@ -231,6 +248,8 @@
     const inside = (el) => skip.some((s) => s && s.contains(el));
     const image = all(node, 'image').find((img) => !inside(img) && !matchesAny(img, 'inlineImage'));
     if (image) return { type: 'image', name: '', src: image.currentSrc || image.src, el: image };
+    const pendingImage = all(node, 'imagePlaceholder').find((img) => !inside(img) && !matchesAny(img, 'inlineImage'));
+    if (pendingImage) return { type: 'image', name: '', src: null, el: pendingImage };
     const marker = all(node, 'document').find((el) => !inside(el));
     if (marker) {
       const nameEl = first(node, 'documentName');
@@ -318,27 +337,34 @@
     };
   }
 
-  // Backend shape for one message. Quoted context is folded into the text.
+  // Backend shape for one message: quoted reply and unuploaded attachments sit in dedicated fields.
   function toApiMessage(message, uploads) {
-    let text = message.text;
-    if (!text && message.attachment) {
-      text = message.attachment.type === 'image'
-        ? PLACEHOLDER_IMAGE
-        : `${PLACEHOLDER_DOCUMENT}${message.attachment.name ? ` ${message.attachment.name}` : ''}`;
-    }
-    if (message.quoted) text = `[Răspuns la: "${message.quoted.slice(0, 300)}"]\n${text}`;
     const uploadId = uploads && uploads.get(message.id);
+    const unuploaded = !uploadId && message.attachment
+      ? [{ kind: message.attachment.type, filename: message.attachment.name || null }]
+      : [];
     return {
       id: message.id,
       direction: message.direction,
-      text,
+      text: message.text || '',
+      quoted_text: message.quoted ? message.quoted.slice(0, 1000) : null,
       sent_at: message.sent_at,
       attachments: uploadId ? [{ upload_id: uploadId }] : [],
+      unuploaded_attachments: unuploaded,
     };
   }
 
   function findComposer(doc = document) {
     return first(first(doc, 'chatPane'), 'composer');
+  }
+
+  function findMediaPreview(doc = document) {
+    return first(doc, 'mediaPreview');
+  }
+
+  function findMediaCaption(doc = document) {
+    const preview = findMediaPreview(doc);
+    return first(preview || doc, 'mediaCaption');
   }
 
   function findAppRoot(doc = document) {
@@ -385,6 +411,8 @@
     readConversation,
     toApiMessage,
     findComposer,
+    findMediaPreview,
+    findMediaCaption,
     findAppRoot,
     selfTest,
   };

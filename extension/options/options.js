@@ -81,10 +81,14 @@ testButton.addEventListener('click', async () => {
   setBusy(true);
   try {
     if (!(await save())) return;
-    setStatus('Se testează conexiunea…');
+    setStatus('Se testează conexiunea...');
     const response = await chrome.runtime.sendMessage({ type: 'ecq:ping' });
     if (response?.ok) {
-      setStatus(response.staff ? `Conexiune reușită. Operator: ${response.staff}.` : 'Conexiune reușită.', 'ok');
+      if (response.outdated) {
+        setStatus(`Versiunea extensiei este prea veche (minim ${response.min_extension_version}). Actualizați extensia.`, 'error');
+      } else {
+        setStatus(response.staff ? `Conexiune reușită. Operator: ${response.staff}.` : 'Conexiune reușită.', 'ok');
+      }
     } else {
       setStatus(response?.error?.message || 'Conexiunea nu a reușit.', 'error');
     }

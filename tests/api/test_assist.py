@@ -77,8 +77,12 @@ def test_without_configured_tokens_every_request_is_refused(tmp_path, method, pa
 
 
 def test_ping_names_the_staff_member(assist_api):
-    assert assist_api.client.get("/v1/assist/ping", headers=ANA).json() == {"ok": True, "staff": "ana"}
-    assert assist_api.client.get("/v1/assist/ping", headers=MIHAI).json() == {"ok": True, "staff": "mihai"}
+    assert assist_api.client.get("/v1/assist/ping", headers=ANA).json() == {
+        "ok": True, "staff": "ana", "backend_version": "0.1.0", "min_extension_version": "",
+    }
+    assert assist_api.client.get("/v1/assist/ping", headers=MIHAI).json() == {
+        "ok": True, "staff": "mihai", "backend_version": "0.1.0", "min_extension_version": "",
+    }
 
 
 def test_assist_routes_carry_no_cors_for_unknown_origins(assist_api):
@@ -385,3 +389,124 @@ def test_suggest_and_inbound_share_the_conversation_lock(tmp_path):
 
     assert [r.status_code for r in asyncio.run(scenario())] == [200, 200]
     assert events == ["start suggest", "end suggest", "handle"]
+
+
+# ---------- citate, atasamente neincarcate, origine si versiune ----------
+
+def test_suggest_maps_quoted_text_and_unuploaded_attachments(assist_api):
+    body = suggest_body()
+    body["messages"] = [
+        {
+            "id": "m1",
+            "direction": "in",
+            "text": "Asa vreau si eu",
+            "quoted_text": "Oferta 500 buc: 302,50 lei",
+            "unuploaded_attachments": [
+                {"kind": "image", "filename": "../Logo client.png"},
+                {"kind": "document"},
+            ],
+        },
+        {"id": "m2", "direction": "in", "text": "Multumesc", "quoted_text": ""},
+    ]
+    response = assist_api.client.post("/v1/assist/suggest", json=body, headers=ANA)
+    assert response.status_code == 200, response.text
+    first, second = assist_api.assist.suggested[0][1]
+    assert first.quoted_text == "Oferta 500 buc: 302,50 lei"
+    assert [(u.kind, u.filename) for u in first.unuploaded_attachments] == [
+        ("image", "Logo client.png"),
+        ("document", None),
+    ]
+    assert second.quoted_text is None and second.unuploaded_attachments == []
+
+
+@pytest.mark.parametrize("message_extra", [
+    {"quoted_text": "x" * 1001},
+    {"unuploaded_attachments": [{"kind": "video"}]},
+    {"unuploaded_attachments": [{"kind": "image", "extra": 1}]},
+    {"unuploaded_attachments": [{"kind": "image"}] * 6},
+])
+def test_suggest_validates_quoted_text_and_unuploaded_attachments(assist_api, message_extra):
+    body = suggest_body()
+    body["messages"] = [{"id": "m1", "direction": "in", "text": "x", **message_extra}]
+    response = assist_api.client.post("/v1/assist/suggest", json=body, headers=ANA)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"
+
+
+def test_extension_origin_allowlist_and_cors(tmp_path):
+    ext = "chrome-extension://abcdefghijklmnopabcdefghijklmnop"
+    api = build(tmp_path, assist=FakeAssist(), env={"EC_QUOTE_EXTENSION_ORIGINS": ext})
+
+    ok = api.client.get("/v1/assist/ping", headers=dict(ANA, Origin=ext))
+    assert ok.status_code == 200
+    assert ok.headers["access-control-allow-origin"] == ext
+
+    preflight = api.client.options("/v1/assist/suggest", headers={
+        "Origin": ext,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type,x-ecquote-assist-token,x-ecquote-extension-version",
+    })
+    assert preflight.status_code == 200
+    assert preflight.headers["access-control-allow-origin"] == ext
+
+    site_preflight = api.client.options("/v1/assist/suggest", headers={
+        "Origin": ORIGIN,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "x-ecquote-assist-token",
+    })
+    assert site_preflight.status_code == 400
+
+    for bad_origin in ("chrome-extension://altid", ORIGIN, "https://evil.test"):
+        denied = api.client.post("/v1/assist/suggest", json=suggest_body(), headers=dict(ANA, Origin=bad_origin))
+        assert denied.status_code == 403
+        assert denied.json()["error"]["code"] == "forbidden_origin"
+        assert denied.json()["error"]["message"] == "Origine nepermisa."
+
+    no_origin = api.client.post("/v1/assist/suggest", json=suggest_body(), headers=ANA)
+    assert no_origin.status_code == 200
+
+
+def test_min_extension_version_blocks_assist_actions_but_allows_ping(tmp_path):
+    api = build(tmp_path, assist=FakeAssist(), env={"EC_QUOTE_MIN_EXTENSION_VERSION": "0.2.0"})
+
+    # ping trece mereu pentru a raporta versiunea minima.
+    for headers in (ANA, dict(ANA, **{"X-EcQuote-Extension-Version": "0.1.0"})):
+        ping = api.client.get("/v1/assist/ping", headers=headers)
+        assert ping.status_code == 200
+        assert ping.json()["min_extension_version"] == "0.2.0"
+        assert ping.json()["backend_version"] == "0.1.0"
+
+    for bad_version in (None, "", "0.1.9", "v0.2.0", "0.2", "invalid"):
+        hdrs = dict(ANA) if bad_version is None else dict(ANA, **{"X-EcQuote-Extension-Version": bad_version})
+        for path, kwargs in (
+            ("/v1/assist/suggest", {"json": suggest_body()}),
+            ("/v1/assist/upload", {"files": {"file": ("a.png", PNG)}, "data": {"chat_key": WA_KEY, "message_id": "m1"}}),
+            ("/v1/assist/suggestions/sug-1/payment-link", {"json": {}}),
+        ):
+            res = api.client.post(path, headers=hdrs, **kwargs)
+            assert res.status_code == 426
+            err = res.json()["error"]
+            assert err["code"] == "extension_update_required"
+            assert err["message"] == "Actualizati extensia."
+            assert err["min_extension_version"] == "0.2.0"
+
+    for good_version in ("0.2.0", "0.10.0", "1.0.0"):
+        hdrs = dict(ANA, **{"X-EcQuote-Extension-Version": good_version})
+        assert api.client.post("/v1/assist/suggest", json=suggest_body(), headers=hdrs).status_code == 200
+
+
+@pytest.mark.parametrize("env_extra, var_name", [
+    ({"EC_QUOTE_MIN_EXTENSION_VERSION": "v1.0.0"}, "EC_QUOTE_MIN_EXTENSION_VERSION"),
+    ({"EC_QUOTE_MIN_EXTENSION_VERSION": "1.0"}, "EC_QUOTE_MIN_EXTENSION_VERSION"),
+    ({"EC_QUOTE_EXTENSION_ORIGINS": "https://etichetecreative.ro"}, "EC_QUOTE_EXTENSION_ORIGINS"),
+    ({"EC_QUOTE_EXTENSION_ORIGINS": "chrome-extension://abcdef/"}, "EC_QUOTE_EXTENSION_ORIGINS"),
+    ({"EC_QUOTE_EXTENSION_ORIGINS": "*"}, "EC_QUOTE_EXTENSION_ORIGINS"),
+])
+def test_extension_settings_validation(tmp_path, env_extra, var_name):
+    from ec_quote.config import SettingsError, load_settings
+    from tests.api.conftest import base_env
+
+    with pytest.raises(SettingsError) as exc:
+        load_settings(base_env(tmp_path, **env_extra), require_integrations=False)
+    assert var_name in str(exc.value)
+
