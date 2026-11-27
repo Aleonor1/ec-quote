@@ -5,3 +5,5 @@ __pycache__/
 coverage.xml
 data/
 .env
+node_modules/
+extension/screenshots/
