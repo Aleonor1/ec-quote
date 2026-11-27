@@ -95,12 +95,21 @@ class AssistAttachmentRef(_Strict):
     upload_id: UploadId
 
 
+class AssistPendingAttachmentIn(_Strict):
+    kind: Literal["image", "document"]
+    filename: Short | None = None
+
+
 class AssistMessageIn(_Strict):
     id: MessageId
     direction: Literal["in", "out"]
     text: Annotated[str, StringConstraints(max_length=70000)] = ""
+    quoted_text: Annotated[str, StringConstraints(max_length=1000)] | None = None
     sent_at: datetime | None = None
     attachments: Annotated[list[AssistAttachmentRef], Field(max_length=5)] = Field(default_factory=list)
+    unuploaded_attachments: Annotated[list[AssistPendingAttachmentIn], Field(max_length=5)] = Field(
+        default_factory=list
+    )
 
 
 class AssistSuggestRequest(_Strict):

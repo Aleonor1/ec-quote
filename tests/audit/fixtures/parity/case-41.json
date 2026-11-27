@@ -1,0 +1,289 @@
+{
+  "case_id": "case-41",
+  "url": "https://calculator.example.invalid/api/sync/line",
+  "choices": {
+    "product_id": "gid://shopify/Product/1001",
+    "material_name": "Vinil Transparent",
+    "shape": "oval",
+    "width_cm": "6",
+    "height_cm": "4",
+    "quantity": 200,
+    "add_ons": {
+      "Finisaj": "Laminare mată"
+    },
+    "adhesive": "standard",
+    "white_print": false,
+    "cut": "none",
+    "urgent": false,
+    "file_editing": "none",
+    "instructions": ""
+  },
+  "request": {
+    "productId": "gid://shopify/Product/1001",
+    "materialName": "Vinil Transparent",
+    "shape": "oval",
+    "widthCm": 6,
+    "heightCm": 4,
+    "quantity": 200,
+    "addOns": {
+      "Finisaj": "Laminare mată"
+    },
+    "adhesive": "standard",
+    "whitePrint": false,
+    "cut": "none",
+    "urgent": false,
+    "fileEditing": "none",
+    "instructions": ""
+  },
+  "status_code": 200,
+  "response": {
+    "status": "priced",
+    "total": 452,
+    "base": 355.2,
+    "unitPrice": 2.26,
+    "capQuantity": null,
+    "pricingPath": "A",
+    "flatBaselinePct": 0,
+    "breakdown": {
+      "tablePrice": 2.22,
+      "fullPrice": 558,
+      "discount": 106,
+      "options": 71.04,
+      "urgency": 0,
+      "fileEditing": 0,
+      "setupFee": 25,
+      "discountPercent": 20,
+      "quantityDiscountPercent": 20,
+      "promoPercent": 0,
+      "promoMode": "replace",
+      "flatPercent": 0,
+      "addOnPercent": 20,
+      "adhesivePercent": 0,
+      "whitePrintPercent": 0,
+      "cutPercent": 0,
+      "freeSample": false
+    },
+    "properties": [
+      {
+        "name": "_Sticker Quantity",
+        "value": "200"
+      },
+      {
+        "name": "Forma Taiere",
+        "value": "oval"
+      },
+      {
+        "name": "Dimensiune",
+        "value": "6 x 4 CM"
+      },
+      {
+        "name": "Material",
+        "value": "Vinil Transparent"
+      },
+      {
+        "name": "Cantitate",
+        "value": "200 buc"
+      },
+      {
+        "name": "_calculator_price",
+        "value": "452"
+      },
+      {
+        "name": "_calculator_area",
+        "value": "24"
+      },
+      {
+        "name": "_price_per_unit",
+        "value": "2.26"
+      },
+      {
+        "name": "_product_gid",
+        "value": "gid://shopify/Product/1001"
+      }
+    ]
+  },
+  "recorded": {
+    "status": "priced",
+    "total": "452",
+    "total_ex_vat": "373.55",
+    "unit_price": "2.26"
+  },
+  "tiers": [
+    {
+      "quantity": 300,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1001",
+        "materialName": "Vinil Transparent",
+        "shape": "oval",
+        "widthCm": 6,
+        "heightCm": 4,
+        "quantity": 300,
+        "addOns": {
+          "Finisaj": "Laminare mată"
+        },
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 601,
+        "base": 479.52,
+        "unitPrice": 2,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 2.22,
+          "fullPrice": 825,
+          "discount": 224,
+          "options": 95.9,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 28,
+          "quantityDiscountPercent": 28,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 20,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "300"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "oval"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "6 x 4 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Vinil Transparent"
+          },
+          {
+            "name": "Cantitate",
+            "value": "300 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "601"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "24"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "2"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1001"
+          }
+        ]
+      }
+    },
+    {
+      "quantity": 500,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1001",
+        "materialName": "Vinil Transparent",
+        "shape": "oval",
+        "widthCm": 6,
+        "heightCm": 4,
+        "quantity": 500,
+        "addOns": {
+          "Finisaj": "Laminare mată"
+        },
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 878,
+        "base": 710.4,
+        "unitPrice": 1.76,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 2.22,
+          "fullPrice": 1357,
+          "discount": 479,
+          "options": 142.08,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 36,
+          "quantityDiscountPercent": 36,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 20,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "500"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "oval"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "6 x 4 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Vinil Transparent"
+          },
+          {
+            "name": "Cantitate",
+            "value": "500 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "878"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "24"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "1.76"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1001"
+          }
+        ]
+      }
+    }
+  ]
+}

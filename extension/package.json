@@ -3,8 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Dev-only manifest: the extension itself has no build step and no dependencies.",
+  "description": "Dev-only manifest: the extension itself has no runtime dependencies; tools/build.mjs produces a reproducible dist/ and zip.",
   "scripts": {
+    "build": "node tools/build.mjs",
     "test": "node --test \"tests/unit/*.test.mjs\" \"tests/browser/*.test.mjs\"",
     "test:unit": "node --test \"tests/unit/*.test.mjs\"",
     "test:browser": "node --test \"tests/browser/*.test.mjs\"",

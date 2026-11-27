@@ -1,0 +1,281 @@
+{
+  "case_id": "case-17",
+  "url": "https://calculator.example.invalid/api/sync/line",
+  "choices": {
+    "product_id": "gid://shopify/Product/1001",
+    "material_name": "Vinil Alb Mat",
+    "shape": "rectangle",
+    "width_cm": "10",
+    "height_cm": "5",
+    "quantity": 400,
+    "add_ons": {},
+    "adhesive": "standard",
+    "white_print": false,
+    "cut": "none",
+    "urgent": false,
+    "file_editing": "none",
+    "instructions": ""
+  },
+  "request": {
+    "productId": "gid://shopify/Product/1001",
+    "materialName": "Vinil Alb Mat",
+    "shape": "rectangle",
+    "widthCm": 10,
+    "heightCm": 5,
+    "quantity": 400,
+    "addOns": {},
+    "adhesive": "standard",
+    "whitePrint": false,
+    "cut": "none",
+    "urgent": false,
+    "fileEditing": "none",
+    "instructions": ""
+  },
+  "status_code": 200,
+  "response": {
+    "status": "priced",
+    "total": 1077,
+    "base": 1051.2,
+    "unitPrice": 2.69,
+    "capQuantity": null,
+    "pricingPath": "A",
+    "flatBaselinePct": 0,
+    "breakdown": {
+      "tablePrice": 3.65,
+      "fullPrice": 1485,
+      "discount": 408,
+      "options": 0,
+      "urgency": 0,
+      "fileEditing": 0,
+      "setupFee": 25,
+      "discountPercent": 28,
+      "quantityDiscountPercent": 28,
+      "promoPercent": 0,
+      "promoMode": "replace",
+      "flatPercent": 0,
+      "addOnPercent": 0,
+      "adhesivePercent": 0,
+      "whitePrintPercent": 0,
+      "cutPercent": 0,
+      "freeSample": false
+    },
+    "properties": [
+      {
+        "name": "_Sticker Quantity",
+        "value": "400"
+      },
+      {
+        "name": "Forma Taiere",
+        "value": "rectangle"
+      },
+      {
+        "name": "Dimensiune",
+        "value": "10 x 5 CM"
+      },
+      {
+        "name": "Material",
+        "value": "Vinil Alb Mat"
+      },
+      {
+        "name": "Cantitate",
+        "value": "400 buc"
+      },
+      {
+        "name": "_calculator_price",
+        "value": "1077"
+      },
+      {
+        "name": "_calculator_area",
+        "value": "50"
+      },
+      {
+        "name": "_price_per_unit",
+        "value": "2.69"
+      },
+      {
+        "name": "_product_gid",
+        "value": "gid://shopify/Product/1001"
+      }
+    ]
+  },
+  "recorded": {
+    "status": "priced",
+    "total": "1077",
+    "total_ex_vat": "890.08",
+    "unit_price": "2.69"
+  },
+  "tiers": [
+    {
+      "quantity": 500,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1001",
+        "materialName": "Vinil Alb Mat",
+        "shape": "rectangle",
+        "widthCm": 10,
+        "heightCm": 5,
+        "quantity": 500,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 1193,
+        "base": 1168,
+        "unitPrice": 2.39,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 3.65,
+          "fullPrice": 1850,
+          "discount": 657,
+          "options": 0,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 36,
+          "quantityDiscountPercent": 36,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "500"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "rectangle"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "10 x 5 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Vinil Alb Mat"
+          },
+          {
+            "name": "Cantitate",
+            "value": "500 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "1193"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "50"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "2.39"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1001"
+          }
+        ]
+      }
+    },
+    {
+      "quantity": 1000,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1001",
+        "materialName": "Vinil Alb Mat",
+        "shape": "rectangle",
+        "widthCm": 10,
+        "heightCm": 5,
+        "quantity": 1000,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 2033,
+        "base": 2007.5,
+        "unitPrice": 2.03,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 3.65,
+          "fullPrice": 3675,
+          "discount": 1642,
+          "options": 0,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 45,
+          "quantityDiscountPercent": 45,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "1000"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "rectangle"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "10 x 5 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Vinil Alb Mat"
+          },
+          {
+            "name": "Cantitate",
+            "value": "1000 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "2033"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "50"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "2.03"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1001"
+          }
+        ]
+      }
+    }
+  ]
+}

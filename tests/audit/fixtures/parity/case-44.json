@@ -1,0 +1,281 @@
+{
+  "case_id": "case-44",
+  "url": "https://calculator.example.invalid/api/sync/line",
+  "choices": {
+    "product_id": "gid://shopify/Product/1002",
+    "material_name": "Polipropilenă Albă",
+    "shape": "circle",
+    "width_cm": "5",
+    "height_cm": "5",
+    "quantity": 250,
+    "add_ons": {},
+    "adhesive": "standard",
+    "white_print": false,
+    "cut": "none",
+    "urgent": false,
+    "file_editing": "none",
+    "instructions": ""
+  },
+  "request": {
+    "productId": "gid://shopify/Product/1002",
+    "materialName": "Polipropilenă Albă",
+    "shape": "circle",
+    "widthCm": 5,
+    "heightCm": 5,
+    "quantity": 250,
+    "addOns": {},
+    "adhesive": "standard",
+    "whitePrint": false,
+    "cut": "none",
+    "urgent": false,
+    "fileEditing": "none",
+    "instructions": ""
+  },
+  "status_code": 200,
+  "response": {
+    "status": "priced",
+    "total": 250,
+    "base": 224.4,
+    "unitPrice": 1,
+    "capQuantity": null,
+    "pricingPath": "A",
+    "flatBaselinePct": 0,
+    "breakdown": {
+      "tablePrice": 1.02,
+      "fullPrice": 280,
+      "discount": 30,
+      "options": 0,
+      "urgency": 0,
+      "fileEditing": 0,
+      "setupFee": 25,
+      "discountPercent": 12,
+      "quantityDiscountPercent": 12,
+      "promoPercent": 0,
+      "promoMode": "replace",
+      "flatPercent": 0,
+      "addOnPercent": 0,
+      "adhesivePercent": 0,
+      "whitePrintPercent": 0,
+      "cutPercent": 0,
+      "freeSample": false
+    },
+    "properties": [
+      {
+        "name": "_Sticker Quantity",
+        "value": "250"
+      },
+      {
+        "name": "Forma Taiere",
+        "value": "circle"
+      },
+      {
+        "name": "Dimensiune",
+        "value": "5 x 5 CM"
+      },
+      {
+        "name": "Material",
+        "value": "Polipropilenă Albă"
+      },
+      {
+        "name": "Cantitate",
+        "value": "250 buc"
+      },
+      {
+        "name": "_calculator_price",
+        "value": "250"
+      },
+      {
+        "name": "_calculator_area",
+        "value": "25"
+      },
+      {
+        "name": "_price_per_unit",
+        "value": "1"
+      },
+      {
+        "name": "_product_gid",
+        "value": "gid://shopify/Product/1002"
+      }
+    ]
+  },
+  "recorded": {
+    "status": "priced",
+    "total": "250",
+    "total_ex_vat": "206.61",
+    "unit_price": "1"
+  },
+  "tiers": [
+    {
+      "quantity": 500,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1002",
+        "materialName": "Polipropilenă Albă",
+        "shape": "circle",
+        "widthCm": 5,
+        "heightCm": 5,
+        "quantity": 500,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 408,
+        "base": 382.5,
+        "unitPrice": 0.82,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 1.02,
+          "fullPrice": 535,
+          "discount": 127,
+          "options": 0,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 25,
+          "quantityDiscountPercent": 25,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "500"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "circle"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "5 x 5 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Polipropilenă Albă"
+          },
+          {
+            "name": "Cantitate",
+            "value": "500 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "408"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "25"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "0.82"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1002"
+          }
+        ]
+      }
+    },
+    {
+      "quantity": 1000,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1002",
+        "materialName": "Polipropilenă Albă",
+        "shape": "circle",
+        "widthCm": 5,
+        "heightCm": 5,
+        "quantity": 1000,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 658,
+        "base": 632.4,
+        "unitPrice": 0.66,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 1.02,
+          "fullPrice": 1045,
+          "discount": 387,
+          "options": 0,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 38,
+          "quantityDiscountPercent": 38,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 0,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "1000"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "circle"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "5 x 5 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Polipropilenă Albă"
+          },
+          {
+            "name": "Cantitate",
+            "value": "1000 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "658"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "25"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "0.66"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1002"
+          }
+        ]
+      }
+    }
+  ]
+}

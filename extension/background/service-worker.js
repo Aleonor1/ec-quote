@@ -1,6 +1,7 @@
 // Background service worker: the only place that holds the token and talks to the backend.
 import {
   AssistError,
+  DEFAULT_VERSION,
   MAX_UPLOAD_BYTES,
   createApiClient,
   messageFor,
@@ -9,6 +10,7 @@ import {
 import { createSuggestCoordinator } from './coordinator.js';
 
 const WHATSAPP_ORIGIN = 'https://web.whatsapp.com';
+const EXTENSION_VERSION = chrome.runtime.getManifest?.()?.version || DEFAULT_VERSION;
 const DEFAULTS = Object.freeze({
   baseUrl: '',
   token: '',
@@ -31,11 +33,30 @@ function publicSettings(settings) {
     mode: settings.mode === 'manual' ? 'manual' : 'auto',
     collapsed: settings.panelCollapsed === true,
     configured: normalizeBaseUrl(settings.baseUrl).ok && Boolean(settings.token),
+    version: EXTENSION_VERSION,
   };
 }
 
 async function clientFor(settings) {
-  return createApiClient({ baseUrl: settings.baseUrl, token: settings.token });
+  return createApiClient({
+    baseUrl: settings.baseUrl,
+    token: settings.token,
+    version: EXTENSION_VERSION,
+  });
+}
+
+// Toolbar badge indicates off, ready, or check (selector breakage / update required).
+async function updateActionState(status) {
+  const map = {
+    off: { text: 'OPR', color: '#5b6b75', title: 'EC Quote: oprit' },
+    check: { text: '!', color: '#8a5a00', title: 'EC Quote: compatibilitate WhatsApp de verificat' },
+    update: { text: 'ACT', color: '#b3261e', title: 'EC Quote: actualizați extensia' },
+    ready: { text: '', color: '#00745f', title: 'EC Quote: activ' },
+  };
+  const next = map[status] || map.ready;
+  await chrome.action?.setBadgeText?.({ text: next.text }).catch(() => {});
+  if (next.text) await chrome.action?.setBadgeBackgroundColor?.({ color: next.color }).catch(() => {});
+  await chrome.action?.setTitle?.({ title: next.title }).catch(() => {});
 }
 
 // A failed fetch without the host permission looks like a network error; tell them apart.
@@ -54,6 +75,7 @@ async function refineError(error, settings) {
 
 function failure(error) {
   const code = error instanceof AssistError ? error.code : 'unknown';
+  if (code === 'update_required') updateActionState('update');
   // Log codes only: never the token, never message contents.
   if (code !== 'aborted') console.warn('[ec-quote] request failed:', code, error?.status || '');
   return { ok: false, error: { code, message: messageFor(code) } };
@@ -70,11 +92,16 @@ const coordinator = createSuggestCoordinator({
   },
 });
 
-const lastSuggestionKey = (chatKey) => `lastSuggestion:${chatKey}`;
+async function lastSuggestionKey(chatKey) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(chatKey || '')));
+  const hex = Array.from(new Uint8Array(digest).subarray(0, 8), (b) => b.toString(16).padStart(2, '0')).join('');
+  return `lastSuggestion:${hex}`;
+}
 
 async function rememberSuggestion(chatKey, suggestionId) {
   if (!suggestionId) return;
-  await chrome.storage.session.set({ [lastSuggestionKey(chatKey)]: suggestionId }).catch(() => {});
+  const key = await lastSuggestionKey(chatKey);
+  await chrome.storage.session.set({ [key]: suggestionId }).catch(() => {});
 }
 
 function base64ToBytes(base64) {
@@ -95,7 +122,17 @@ async function blobToBase64(blob) {
 
 const handlers = {
   async 'ecq:get-settings'() {
-    return { ok: true, settings: publicSettings(await loadSettings()) };
+    const settings = await loadSettings();
+    await updateActionState(settings.enabled === false ? 'off' : 'ready');
+    return { ok: true, settings: publicSettings(settings) };
+  },
+
+  async 'ecq:compat-status'({ status }) {
+    const settings = await loadSettings();
+    if (settings.enabled === false) await updateActionState('off');
+    else if (status === 'check') await updateActionState('check');
+    else await updateActionState('ready');
+    return { ok: true };
   },
 
   async 'ecq:set-collapsed'({ collapsed }) {
@@ -112,7 +149,8 @@ const handlers = {
     const settings = await loadSettings();
     try {
       const result = await (await clientFor(settings)).ping();
-      return { ok: true, staff: result.staff };
+      if (result.outdated) await updateActionState('update');
+      return result;
     } catch (error) {
       return failure(await refineError(error, settings));
     }
@@ -135,8 +173,14 @@ const handlers = {
   },
 
   async 'ecq:cancel'({ chatKey }) {
-    if (chatKey) coordinator.cancel(chatKey);
-    else coordinator.cancelAllExcept(null);
+    if (chatKey) {
+      coordinator.cancel(chatKey);
+      const key = await lastSuggestionKey(chatKey);
+      await chrome.storage.session.remove(key).catch(() => {});
+    } else {
+      coordinator.cancelAllExcept(null);
+      await chrome.storage.session.clear().catch(() => {});
+    }
     return { ok: true };
   },
 
@@ -158,7 +202,7 @@ const handlers = {
     try {
       if (!suggestionId || !chatKey) throw new AssistError('bad_request');
       // Refuse a suggestion that is no longer the latest one for this chat.
-      const key = lastSuggestionKey(chatKey);
+      const key = await lastSuggestionKey(chatKey);
       const stored = await chrome.storage.session.get(key).catch(() => ({}));
       if (stored[key] && stored[key] !== suggestionId) throw new AssistError('superseded');
       const client = await clientFor(settings);
@@ -202,7 +246,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== 'local') return;
   if (!('enabled' in changes || 'mode' in changes || 'baseUrl' in changes || 'token' in changes)) return;
-  const settings = publicSettings(await loadSettings());
+  const full = await loadSettings();
+  await updateActionState(full.enabled === false ? 'off' : 'ready');
+  const settings = publicSettings(full);
   const tabs = await chrome.tabs.query({ url: `${WHATSAPP_ORIGIN}/*` }).catch(() => []);
   for (const tab of tabs) {
     chrome.tabs.sendMessage(tab.id, { type: 'ecq:settings-changed', settings }).catch(() => {});

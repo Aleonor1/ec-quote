@@ -1,0 +1,281 @@
+{
+  "case_id": "case-28",
+  "url": "https://calculator.example.invalid/api/sync/line",
+  "choices": {
+    "product_id": "gid://shopify/Product/1001",
+    "material_name": "Vinil Alb Lucios",
+    "shape": "custom",
+    "width_cm": "3",
+    "height_cm": "3",
+    "quantity": 50,
+    "add_ons": {},
+    "adhesive": "standard",
+    "white_print": false,
+    "cut": "double",
+    "urgent": false,
+    "file_editing": "none",
+    "instructions": ""
+  },
+  "request": {
+    "productId": "gid://shopify/Product/1001",
+    "materialName": "Vinil Alb Lucios",
+    "shape": "custom",
+    "widthCm": 3,
+    "heightCm": 3,
+    "quantity": 50,
+    "addOns": {},
+    "adhesive": "standard",
+    "whitePrint": false,
+    "cut": "double",
+    "urgent": false,
+    "fileEditing": "none",
+    "instructions": ""
+  },
+  "status_code": 200,
+  "response": {
+    "status": "priced",
+    "total": 78,
+    "base": 45.5,
+    "unitPrice": 1.56,
+    "capQuantity": null,
+    "pricingPath": "A",
+    "flatBaselinePct": 0,
+    "breakdown": {
+      "tablePrice": 0.91,
+      "fullPrice": 78,
+      "discount": 0,
+      "options": 6.82,
+      "urgency": 0,
+      "fileEditing": 0,
+      "setupFee": 25,
+      "discountPercent": 0,
+      "quantityDiscountPercent": 0,
+      "promoPercent": 0,
+      "promoMode": "replace",
+      "flatPercent": 0,
+      "addOnPercent": 0,
+      "adhesivePercent": 0,
+      "whitePrintPercent": 0,
+      "cutPercent": 15,
+      "freeSample": false
+    },
+    "properties": [
+      {
+        "name": "_Sticker Quantity",
+        "value": "50"
+      },
+      {
+        "name": "Forma Taiere",
+        "value": "custom"
+      },
+      {
+        "name": "Dimensiune",
+        "value": "3 x 3 CM"
+      },
+      {
+        "name": "Material",
+        "value": "Vinil Alb Lucios"
+      },
+      {
+        "name": "Cantitate",
+        "value": "50 buc"
+      },
+      {
+        "name": "_calculator_price",
+        "value": "78"
+      },
+      {
+        "name": "_calculator_area",
+        "value": "9"
+      },
+      {
+        "name": "_price_per_unit",
+        "value": "1.56"
+      },
+      {
+        "name": "_product_gid",
+        "value": "gid://shopify/Product/1001"
+      }
+    ]
+  },
+  "recorded": {
+    "status": "priced",
+    "total": "78",
+    "total_ex_vat": "64.46",
+    "unit_price": "1.56"
+  },
+  "tiers": [
+    {
+      "quantity": 100,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1001",
+        "materialName": "Vinil Alb Lucios",
+        "shape": "custom",
+        "widthCm": 3,
+        "heightCm": 3,
+        "quantity": 100,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "double",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 120,
+        "base": 81.9,
+        "unitPrice": 1.2,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 0.91,
+          "fullPrice": 130,
+          "discount": 10,
+          "options": 12.28,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 10,
+          "quantityDiscountPercent": 10,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 15,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "100"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "custom"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "3 x 3 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Vinil Alb Lucios"
+          },
+          {
+            "name": "Cantitate",
+            "value": "100 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "120"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "9"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "1.2"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1001"
+          }
+        ]
+      }
+    },
+    {
+      "quantity": 200,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1001",
+        "materialName": "Vinil Alb Lucios",
+        "shape": "custom",
+        "widthCm": 3,
+        "heightCm": 3,
+        "quantity": 200,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "double",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 200,
+      "response": {
+        "status": "priced",
+        "total": 193,
+        "base": 145.6,
+        "unitPrice": 0.96,
+        "capQuantity": null,
+        "pricingPath": "A",
+        "flatBaselinePct": 0,
+        "breakdown": {
+          "tablePrice": 0.91,
+          "fullPrice": 235,
+          "discount": 42,
+          "options": 21.84,
+          "urgency": 0,
+          "fileEditing": 0,
+          "setupFee": 25,
+          "discountPercent": 20,
+          "quantityDiscountPercent": 20,
+          "promoPercent": 0,
+          "promoMode": "replace",
+          "flatPercent": 0,
+          "addOnPercent": 0,
+          "adhesivePercent": 0,
+          "whitePrintPercent": 0,
+          "cutPercent": 15,
+          "freeSample": false
+        },
+        "properties": [
+          {
+            "name": "_Sticker Quantity",
+            "value": "200"
+          },
+          {
+            "name": "Forma Taiere",
+            "value": "custom"
+          },
+          {
+            "name": "Dimensiune",
+            "value": "3 x 3 CM"
+          },
+          {
+            "name": "Material",
+            "value": "Vinil Alb Lucios"
+          },
+          {
+            "name": "Cantitate",
+            "value": "200 buc"
+          },
+          {
+            "name": "_calculator_price",
+            "value": "193"
+          },
+          {
+            "name": "_calculator_area",
+            "value": "9"
+          },
+          {
+            "name": "_price_per_unit",
+            "value": "0.96"
+          },
+          {
+            "name": "_product_gid",
+            "value": "gid://shopify/Product/1001"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -13,6 +13,11 @@
   "business_hours": {"start": "09:00", "end": "18:00", "days": [1, 2, 3, 4, 5]},
   "min_dpi_ok": 150,
   "min_dpi_weak": 100,
+  "retention_days": 90,
+  "suggestion_similarity_threshold": 0.6,
+  "model_input_price_per_million": "15",
+  "model_output_price_per_million": "75",
+  "model_monthly_cost_ceiling": "500",
   "approved_material_claims": [
     "rezistenta la umezeala si ulei",
     "lac UV mat",

@@ -1,0 +1,93 @@
+{
+  "case_id": "case-39",
+  "url": "https://calculator.example.invalid/api/sync/line",
+  "choices": {
+    "product_id": "gid://shopify/Product/1001",
+    "material_name": "Hârtie Kraft",
+    "shape": "square",
+    "width_cm": "10",
+    "height_cm": "10",
+    "quantity": 300,
+    "add_ons": {},
+    "adhesive": "standard",
+    "white_print": false,
+    "cut": "none",
+    "urgent": false,
+    "file_editing": "none",
+    "instructions": ""
+  },
+  "request": {
+    "productId": "gid://shopify/Product/1001",
+    "materialName": "Hârtie Kraft",
+    "shape": "square",
+    "widthCm": 10,
+    "heightCm": 10,
+    "quantity": 300,
+    "addOns": {},
+    "adhesive": "standard",
+    "whitePrint": false,
+    "cut": "none",
+    "urgent": false,
+    "fileEditing": "none",
+    "instructions": ""
+  },
+  "status_code": 422,
+  "response": {
+    "status": "unpriced",
+    "reason": "no_price"
+  },
+  "recorded": {
+    "status": "unpriced",
+    "reason": "no_price"
+  },
+  "tiers": [
+    {
+      "quantity": 500,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1001",
+        "materialName": "Hârtie Kraft",
+        "shape": "square",
+        "widthCm": 10,
+        "heightCm": 10,
+        "quantity": 500,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 422,
+      "response": {
+        "status": "unpriced",
+        "reason": "no_price"
+      }
+    },
+    {
+      "quantity": 1000,
+      "url": "https://calculator.example.invalid/api/sync/line",
+      "request": {
+        "productId": "gid://shopify/Product/1001",
+        "materialName": "Hârtie Kraft",
+        "shape": "square",
+        "widthCm": 10,
+        "heightCm": 10,
+        "quantity": 1000,
+        "addOns": {},
+        "adhesive": "standard",
+        "whitePrint": false,
+        "cut": "none",
+        "urgent": false,
+        "fileEditing": "none",
+        "instructions": ""
+      },
+      "status_code": 422,
+      "response": {
+        "status": "unpriced",
+        "reason": "no_price"
+      }
+    }
+  ]
+}

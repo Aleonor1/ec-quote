@@ -296,11 +296,17 @@
       if (!state.suggestion || !state.suggestion.image_url) return imageSlot.replaceChildren();
       let content;
       if (status === 'ready' && state.imageUrl) {
+        const current = state.suggestion;
+        const currentBlob = state.imageBlob;
         content = [
           el('img', { src: state.imageUrl, alt: 'Imaginea ofertei' }),
           el(
             'div',
             { class: 'row' },
+            button('Atașează imaginea', 'small primary', () => {
+              if (state.suggestion !== current || !state.imageBlob || !on.attachImage) return;
+              on.attachImage(currentBlob, textarea ? textarea.value : '');
+            }),
             button('Copiază imaginea', 'small', async () => {
               try {
                 const png = await NS.Media.toPng(state.imageBlob);
@@ -311,7 +317,7 @@
               }
             }),
             button('Descarcă', 'small', () => {
-              const link = el('a', { href: state.imageUrl, download: 'oferta-etichete-creative.png' });
+              const link = el('a', { href: state.imageUrl, download: 'oferta.png' });
               shadow.append(link);
               link.click();
               link.remove();
@@ -321,7 +327,7 @@
       } else if (status === 'error') {
         content = [el('div', { class: 'image-state', text: 'Imaginea ofertei nu a putut fi încărcată.' })];
       } else {
-        content = [el('div', { class: 'image-state', text: 'Se încarcă imaginea ofertei…' })];
+        content = [el('div', { class: 'image-state', text: 'Se încarcă imaginea ofertei...' })];
       }
       imageSlot.replaceChildren(el('h3', { class: 'label', text: 'Imaginea ofertei' }), el('div', { class: 'image-box' }, content));
     }
@@ -468,13 +474,14 @@
       setBusy(busy) {
         state.busy = busy;
         for (const b of actions.querySelectorAll('button')) b.disabled = busy;
+        for (const b of imageSlot.querySelectorAll('button')) b.disabled = busy;
       },
 
       showLoading(text) {
         state.suggestion = null;
         setImageBlob(null);
         banner.hidden = true;
-        renderState({ loading: true, text: text || 'Se pregătește sugestia…' });
+        renderState({ loading: true, text: text || 'Se pregătește sugestia...' });
       },
       showState(options) {
         state.suggestion = null;
@@ -502,7 +509,7 @@
         attachInfo.textContent = info || '';
         attachBtn.hidden = !canRead;
         attachBtn.disabled = Boolean(busy);
-        attachBtn.textContent = busy ? 'Se trimite…' : 'Trimite fișierul la verificare';
+        attachBtn.textContent = busy ? 'Se trimite...' : 'Trimite fișierul la verificare';
         attachStatus.hidden = !status;
         attachStatus.textContent = status || '';
         attachStatus.dataset.tone = tone || 'info';

@@ -21,6 +21,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 
 import httpx
@@ -74,7 +75,13 @@ from ec_quote.contracts import (
     Engine,
     InboundMessage,
     OutboundAction,
+    PendingAttachment,
 )
+
+try:
+    BACKEND_VERSION = package_version("ec-quote")
+except PackageNotFoundError:  # pragma: no cover
+    BACKEND_VERSION = "0.1.0"
 
 STATIC_DIR = Path(__file__).parent / "static"
 UPLOAD_PATHS = ("/v1/chat/upload", "/v1/assist/upload")
@@ -86,19 +93,31 @@ MEDIA_MIMES = ("image/png", "image/jpeg", "image/webp")
 APPROVAL_ID = re.compile(r"[A-Za-z0-9_.:-]{1,128}")
 MESSAGE_ID = re.compile(r"[\x21-\x7e]{1,200}")
 REQUEST_ID = re.compile(r"[A-Za-z0-9_-]{8,64}")
+SEMVER = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 
 _ACTIONS = TypeAdapter(list[OutboundAction])
 
 HTTP_CODES = {404: "not_found", 405: "method_not_allowed", 400: "bad_request", 413: "body_too_large"}
 
 
+def _parse_semver(value: str | None) -> tuple[int, int, int] | None:
+    if not value:
+        return None
+    cleaned = value.strip()
+    if not SEMVER.fullmatch(cleaned):
+        return None
+    major, minor, patch = cleaned.split(".")
+    return int(major), int(minor), int(patch)
+
+
 class ApiError(Exception):
-    def __init__(self, status: int, code: str, message: str, headers: dict[str, str] | None = None):
+    def __init__(self, status: int, code: str, message: str, headers: dict[str, str] | None = None, **extra):
         super().__init__(code)
         self.status = status
         self.code = code
         self.message = message
         self.headers = headers
+        self.extra = extra
 
 
 class BodyTooLarge(Exception):
@@ -176,6 +195,45 @@ class RequestContextMiddleware:
             request_id_var.reset(token)
 
 
+class _SplitCorsMiddleware:
+    """CORS separat: originile magazinului pe rutele publice, originea extensiei pe /v1/assist/*."""
+
+    def __init__(self, app, *, cors_origins: tuple[str, ...], extension_origins: tuple[str, ...]):
+        common = dict(
+            allow_methods=["GET", "POST"],
+            expose_headers=["X-Request-ID", "Retry-After"],
+            allow_credentials=False,
+            max_age=600,
+        )
+        self.assist = CORSMiddleware(
+            app,
+            allow_origins=list(extension_origins),
+            allow_headers=["Content-Type", "X-EcQuote-Assist-Token", "X-EcQuote-Extension-Version"],
+            **common,
+        )
+        self.media = CORSMiddleware(
+            app,
+            allow_origins=[*cors_origins, *extension_origins],
+            allow_headers=["Authorization", "Content-Type", "X-EcQuote-Session"],
+            **common,
+        )
+        self.site = CORSMiddleware(
+            app,
+            allow_origins=list(cors_origins),
+            allow_headers=["Authorization", "Content-Type", "X-EcQuote-Session"],
+            **common,
+        )
+
+    async def __call__(self, scope, receive, send):
+        path = scope.get("path", "") if scope["type"] == "http" else ""
+        if path.startswith("/v1/assist"):
+            await self.assist(scope, receive, send)
+        elif path.startswith("/v1/media/"):
+            await self.media(scope, receive, send)
+        else:
+            await self.site(scope, receive, send)
+
+
 def create_app(
     engine: Engine,
     settings: Settings,
@@ -228,20 +286,16 @@ def create_app(
                        upload_limit=settings.max_upload_bytes + MULTIPART_OVERHEAD, monotonic=monotonic)
     # CORS este stratul exterior, ca si erorile sa poarte antetele pentru originile permise.
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=list(settings.cors_origins),
-        allow_methods=["GET", "POST"],
-        allow_headers=["Authorization", "Content-Type", "X-EcQuote-Session"],
-        expose_headers=["X-Request-ID", "Retry-After"],
-        allow_credentials=False,
-        max_age=600,
+        _SplitCorsMiddleware,
+        cors_origins=settings.cors_origins,
+        extension_origins=settings.extension_origins,
     )
 
     # ---------- erori ----------
 
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError):
-        return _error_response(exc.status, exc.code, exc.message, exc.headers)
+        return _error_response(exc.status, exc.code, exc.message, exc.headers, **exc.extra)
 
     @app.exception_handler(AttachmentError)
     async def _attachment_error(_: Request, exc: AttachmentError):
@@ -602,7 +656,13 @@ def create_app(
     # ---------- mod asistat: extensia Chrome de pe WhatsApp Web ----------
     # Apelurile vin din service worker-ul extensiei, deci fara CORS. Nimic nu se trimite clientului de aici.
 
+    min_ext_semver = _parse_semver(settings.min_extension_version)
+
     def staff(request: Request) -> str:
+        if settings.extension_origins:
+            origin = request.headers.get("origin")
+            if origin and origin not in settings.extension_origins:
+                raise ApiError(403, "forbidden_origin", "Origine nepermisa.")
         given = request.headers.get("x-ecquote-assist-token")
         name = None
         for candidate, token in assist_tokens:  # fara iesire timpurie
@@ -613,6 +673,18 @@ def create_app(
         check_rate(limit_assist, name)
         return name
 
+    def require_extension_version(request: Request) -> None:
+        if min_ext_semver is None:
+            return
+        current = _parse_semver(request.headers.get("x-ecquote-extension-version"))
+        if current is None or current < min_ext_semver:
+            raise ApiError(
+                426,
+                "extension_update_required",
+                "Actualizati extensia.",
+                min_extension_version=settings.min_extension_version,
+            )
+
     def require_assist() -> AssistEngine:
         if assist_engine is None:
             raise ApiError(503, "assist_unavailable", "Modul asistat nu este disponibil.")
@@ -620,11 +692,17 @@ def create_app(
 
     @app.get("/v1/assist/ping")
     async def assist_ping(request: Request):
-        return {"ok": True, "staff": staff(request)}
+        return {
+            "ok": True,
+            "staff": staff(request),
+            "backend_version": BACKEND_VERSION,
+            "min_extension_version": settings.min_extension_version,
+        }
 
     @app.post("/v1/assist/upload")
     async def assist_upload(request: Request):
         name = staff(request)
+        require_extension_version(request)
         invalid = ApiError(422, "invalid_request", "Cerere invalida.")
         async with request.form(max_files=1, max_fields=3) as form:
             upload, chat_key, message_id = form.get("file"), form.get("chat_key"), form.get("message_id")
@@ -648,6 +726,7 @@ def create_app(
     @app.post("/v1/assist/suggest")
     async def assist_suggest(body: AssistSuggestRequest, request: Request):
         name = staff(request)
+        require_extension_version(request)
         source = require_assist()
         contact = Contact(channel="whatsapp", key=body.chat.key, phone=body.chat.phone, name=body.chat.name)
         async with locks.hold(("whatsapp", contact.key)):
@@ -660,14 +739,35 @@ def create_app(
                         raise ApiError(422, "unknown_upload",
                                        "Fisierul nu a fost incarcat pentru aceasta conversatie.")
                     attachments.append(Attachment(path=found[0], mime=found[1], filename=found[2]))
+                unuploaded = [
+                    PendingAttachment(kind=u.kind, filename=safe_filename(u.filename))
+                    for u in item.unuploaded_attachments
+                ]
                 sent = item.sent_at
                 if sent is not None and sent.tzinfo is None:
                     sent = sent.replace(tzinfo=timezone.utc)
-                messages.append(AssistMessage(id=item.id, direction=item.direction,
-                                              text=item.text[:ASSIST_MAX_TEXT], sent_at=sent,
-                                              attachments=attachments))
+                messages.append(AssistMessage(
+                    id=item.id,
+                    direction=item.direction,
+                    text=item.text[:ASSIST_MAX_TEXT],
+                    quoted_text=item.quoted_text[:1000] if item.quoted_text else None,
+                    sent_at=sent,
+                    attachments=attachments,
+                    unuploaded_attachments=unuploaded,
+                ))
+            started_suggest = monotonic()
             suggestion = AssistSuggestion.model_validate(
                 await run_in_threadpool(source.suggest, contact, messages, clock()))
+            suggest_latency_s = max(monotonic() - started_suggest, 0.0)
+            eng_store = getattr(source, "store", None)
+            if eng_store is not None and suggestion.suggestion_id:
+                def _tag_suggestion_metrics() -> None:
+                    rec = eng_store.get_suggestion(suggestion.suggestion_id)
+                    if rec is not None:
+                        rec.requested_by = rec.requested_by or name
+                        rec.backend_latency_s = suggest_latency_s
+                        eng_store.save_suggestion(rec)
+                await run_in_threadpool(_tag_suggestion_metrics)
             await run_in_threadpool(db.save_approval, suggestion.suggestion_id, "assist", contact.key)
         logger.info("assist suggest staff=%s contact=%s messages=%d kind=%s", name,
                     contact_ref(contact.key, log_salt), len(messages), suggestion.kind)
@@ -677,6 +777,7 @@ def create_app(
     async def assist_payment_link(suggestion_id: str, request: Request,
                                   body: AssistPaymentLinkRequest | None = None):
         name = staff(request)
+        require_extension_version(request)
         source = require_assist()
         if not APPROVAL_ID.fullmatch(suggestion_id):
             raise ApiError(404, "suggestion_not_found", "Nu exista.")

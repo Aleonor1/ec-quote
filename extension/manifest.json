@@ -3,6 +3,7 @@
   "name": "EC Quote Asistent WhatsApp",
   "short_name": "EC Quote",
   "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtlESSWD9UsN6Xm813PAg5K3cZnR4F9XQadkt9+ROhti8nGven8egOC3tg1UEOXnbuJFn+MaV3QhJvH7mxlWlt3bL4otEfUuPrbovovs8xCdMZRoYWvdoCynt7zF6UXksIJFRflW3qJwRh9QOclkmfVjaXB2IMJ816HtX/sPyJOe6T0gaYz3RVzp1N/BoLsOsP4opKuWhsZtOoVflb9dBFC0mNPg8M1ofAXP8xhromeDHKUOC4e6ASu1YlbwoAogBxg8uVQfiDbwCdUycjpInyaRpZNSQ/EUP2beZFcBn2dwXercO5l8Vh4lS5VksKPSVKPEsfhLPJMj0Y9f0PZUNKQIDAQAB",
   "description": "Sugestii de răspuns și oferte pentru conversațiile WhatsApp Web ale Etichete Creative. Fiecare mesaj este trimis de operator.",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "clipboardWrite"],

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("Europe/Bucharest")
@@ -28,6 +29,22 @@ def _parse_time(value: str) -> time:
     return time(int(hours), int(minutes))
 
 
+def _parse_retention_days(value: object) -> int | Literal["DECIZIE_DESCHISA"]:
+    if value is None or value == "DECIZIE_DESCHISA":
+        return "DECIZIE_DESCHISA"
+    if isinstance(value, bool):
+        raise ValueError("retention_days trebuie sa fie un numar intreg pozitiv sau DECIZIE_DESCHISA")
+    if isinstance(value, int):
+        parsed = value
+    elif isinstance(value, str) and value.isdigit():
+        parsed = int(value)
+    else:
+        raise ValueError("retention_days trebuie sa fie un numar intreg pozitiv sau DECIZIE_DESCHISA")
+    if parsed < 1:
+        raise ValueError("retention_days trebuie sa fie cel putin 1")
+    return parsed
+
+
 @dataclass(frozen=True)
 class Rules:
     handoff_value_threshold_ron_ex_vat: Decimal
@@ -44,6 +61,7 @@ class Rules:
     business_end: time
     business_days: tuple[int, ...]  # isoweekday, 1 = luni
     approved_material_claims: tuple[str, ...]
+    retention_days: int | Literal["DECIZIE_DESCHISA"] = "DECIZIE_DESCHISA"
     production_term_standard: str = _FALLBACK_PRODUCTION_TERM
     production_term_urgent: str = ""
     raw: dict = field(default_factory=dict, compare=False, repr=False)
@@ -51,6 +69,7 @@ class Rules:
     @classmethod
     def from_dict(cls, data: dict) -> "Rules":
         hours = data["business_hours"]
+        retention = _parse_retention_days(data["retention_days"]) if "retention_days" in data else "DECIZIE_DESCHISA"
         return cls(
             handoff_value_threshold_ron_ex_vat=Decimal(str(data["handoff_value_threshold_ron_ex_vat"])),
             offer_validity_days=int(data["offer_validity_days"]),
@@ -66,6 +85,7 @@ class Rules:
             business_end=_parse_time(hours["end"]),
             business_days=tuple(int(d) for d in hours["days"]),
             approved_material_claims=tuple(data.get("approved_material_claims", [])),
+            retention_days=retention,
             production_term_standard=data.get("production_term_standard") or _FALLBACK_PRODUCTION_TERM,
             production_term_urgent=data.get("production_term_urgent") or "",
             raw=dict(data),

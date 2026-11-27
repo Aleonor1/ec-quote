@@ -61,19 +61,43 @@ test('phoneFromTitle only accepts titles that are phone numbers', () => {
   assert.equal(Reader.phoneFromTitle('12345'), null);
 });
 
-test('toApiMessage folds quoted context, placeholders and upload ids', () => {
+test('toApiMessage sends quoted_text, unuploaded_attachments and upload ids as separate fields', () => {
   const uploads = new Map([['m2', 'up_1']]);
   assert.deepEqual(
     Reader.toApiMessage({ id: 'm1', direction: 'in', text: 'Hârtie', sent_at: null, quoted: 'Ce material?', attachment: null }, uploads),
-    { id: 'm1', direction: 'in', text: '[Răspuns la: "Ce material?"]\nHârtie', sent_at: null, attachments: [] },
+    {
+      id: 'm1',
+      direction: 'in',
+      text: 'Hârtie',
+      quoted_text: 'Ce material?',
+      sent_at: null,
+      attachments: [],
+      unuploaded_attachments: [],
+    },
   );
   assert.deepEqual(
     Reader.toApiMessage({ id: 'm2', direction: 'in', text: '', sent_at: 'x', quoted: null, attachment: { type: 'image', name: '' } }, uploads),
-    { id: 'm2', direction: 'in', text: '[imagine]', sent_at: 'x', attachments: [{ upload_id: 'up_1' }] },
+    {
+      id: 'm2',
+      direction: 'in',
+      text: '',
+      quoted_text: null,
+      sent_at: 'x',
+      attachments: [{ upload_id: 'up_1' }],
+      unuploaded_attachments: [],
+    },
   );
-  assert.equal(
-    Reader.toApiMessage({ id: 'm3', direction: 'in', text: '', sent_at: null, quoted: null, attachment: { type: 'document', name: 'a.pdf' } }, uploads).text,
-    '[document] a.pdf',
+  assert.deepEqual(
+    Reader.toApiMessage({ id: 'm3', direction: 'in', text: '', sent_at: null, quoted: null, attachment: { type: 'document', name: 'a.pdf' } }, uploads),
+    {
+      id: 'm3',
+      direction: 'in',
+      text: '',
+      quoted_text: null,
+      sent_at: null,
+      attachments: [],
+      unuploaded_attachments: [{ kind: 'document', filename: 'a.pdf' }],
+    },
   );
 });
 

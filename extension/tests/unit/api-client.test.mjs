@@ -4,9 +4,11 @@ import {
   AssistError,
   ERROR_MESSAGES,
   TOKEN_HEADER,
+  VERSION_HEADER,
   buildSuggestBody,
   codeForStatus,
   createApiClient,
+  isVersionOlder,
   normalizeBaseUrl,
   normalizeSuggestion,
 } from '../../background/api-client.js';
@@ -23,7 +25,7 @@ function recorder(responder) {
   return { calls, fetchImpl };
 }
 
-const client = (fetchImpl, extra = {}) => createApiClient({ baseUrl: 'https://quote.example.ro/', token: TOKEN, fetchImpl, ...extra });
+const client = (fetchImpl, extra = {}) => createApiClient({ baseUrl: 'https://quote.example.ro/', token: TOKEN, version: '0.2.0', fetchImpl, ...extra });
 
 test('normalizeBaseUrl accepts https and loopback http only', () => {
   assert.deepEqual(normalizeBaseUrl(' https://quote.example.ro/api/ '), {
@@ -39,14 +41,28 @@ test('normalizeBaseUrl accepts https and loopback http only', () => {
   assert.equal(normalizeBaseUrl('https://user:pass@quote.example.ro').reason, 'invalid');
 });
 
-test('ping sends the token header and returns the staff name', async () => {
-  const { calls, fetchImpl } = recorder(() => json(200, { ok: true, staff: 'Ioana' }));
+test('ping sends token and version headers and checks min_extension_version', async () => {
+  const { calls, fetchImpl } = recorder(() => json(200, { ok: true, staff: 'Ioana', backend_version: '0.1.0', min_extension_version: '0.2.0' }));
   const result = await client(fetchImpl).ping();
-  assert.deepEqual(result, { ok: true, staff: 'Ioana' });
+  assert.deepEqual(result, {
+    ok: true,
+    staff: 'Ioana',
+    backend_version: '0.1.0',
+    min_extension_version: '0.2.0',
+    outdated: false,
+  });
   assert.equal(calls[0].url, 'https://quote.example.ro/v1/assist/ping');
   assert.equal(calls[0].init.method, 'GET');
   assert.equal(calls[0].init.headers[TOKEN_HEADER], TOKEN);
+  assert.equal(calls[0].init.headers[VERSION_HEADER], '0.2.0');
   assert.equal(calls[0].init.credentials, 'omit');
+
+  const older = recorder(() => json(200, { ok: true, staff: 'Ioana', backend_version: '0.3.0', min_extension_version: '0.3.0' }));
+  const oldResult = await client(older.fetchImpl).ping();
+  assert.equal(oldResult.outdated, true);
+  assert.equal(isVersionOlder('0.1.9', '0.2.0'), true);
+  assert.equal(isVersionOlder('0.2.0', '0.2.0'), false);
+  assert.equal(isVersionOlder('1.0.0', '0.9.9'), false);
 });
 
 test('suggest posts the contract body, capped at the last 40 messages', async () => {
@@ -55,8 +71,10 @@ test('suggest posts the contract body, capped at the last 40 messages', async ()
     id: `m${i}`,
     direction: i % 2 ? 'out' : 'in',
     text: `mesaj ${i}`,
+    quoted_text: i === 54 ? 'Citat anterior' : null,
     sent_at: null,
     attachments: i === 54 ? [{ upload_id: 'u1', extra: 'x' }, { nope: 1 }] : [],
+    unuploaded_attachments: i === 53 ? [{ kind: 'document', filename: 'oferta.pdf', extra: 1 }, { kind: 'video' }] : [],
     author: 'not in the contract',
   }));
   const suggestion = await client(fetchImpl).suggest({ key: '40722123456', name: 'Maria', phone: '+40722123456', extra: 1 }, messages);
@@ -64,12 +82,22 @@ test('suggest posts the contract body, capped at the last 40 messages', async ()
   assert.equal(url, 'https://quote.example.ro/v1/assist/suggest');
   assert.equal(init.method, 'POST');
   assert.equal(init.headers[TOKEN_HEADER], TOKEN);
+  assert.equal(init.headers[VERSION_HEADER], '0.2.0');
   assert.equal(init.headers['Content-Type'], 'application/json');
   const body = JSON.parse(init.body);
   assert.deepEqual(body.chat, { key: '40722123456', name: 'Maria', phone: '+40722123456' });
   assert.equal(body.messages.length, 40);
   assert.equal(body.messages[0].id, 'm15');
-  assert.deepEqual(body.messages[39], { id: 'm54', direction: 'in', text: 'mesaj 54', sent_at: null, attachments: [{ upload_id: 'u1' }] });
+  assert.deepEqual(body.messages[38].unuploaded_attachments, [{ kind: 'document', filename: 'oferta.pdf' }]);
+  assert.deepEqual(body.messages[39], {
+    id: 'm54',
+    direction: 'in',
+    text: 'mesaj 54',
+    quoted_text: 'Citat anterior',
+    sent_at: null,
+    attachments: [{ upload_id: 'u1' }],
+    unuploaded_attachments: [],
+  });
   assert.equal(suggestion.kind, 'reply');
   assert.equal(suggestion.text, 'Bună ziua!');
   assert.deepEqual(suggestion.options, []);
@@ -106,8 +134,11 @@ test('normalizeSuggestion keeps money as strings and drops unsafe links', () => 
 test('HTTP errors map to codes with Romanian messages and never expose backend text', async () => {
   const cases = [
     [401, 'unauthorized'],
+    [403, 'unauthorized'],
     [404, 'not_found'],
     [409, 'superseded'],
+    [413, 'too_large'],
+    [426, 'update_required'],
     [429, 'rate_limited'],
     [503, 'unavailable'],
     [500, 'server'],

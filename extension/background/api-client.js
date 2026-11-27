@@ -1,8 +1,11 @@
 // HTTP client for the ec-quote assist API. No chrome.* here so it runs under node --test.
 
 export const TOKEN_HEADER = 'X-EcQuote-Assist-Token';
+export const VERSION_HEADER = 'X-EcQuote-Extension-Version';
+export const DEFAULT_VERSION = '0.1.0';
 export const MAX_MESSAGES = 40;
 export const MAX_TEXT_LENGTH = 4000;
+export const MAX_QUOTED_LENGTH = 1000;
 export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -22,6 +25,7 @@ export const ERROR_MESSAGES = Object.freeze({
   disabled: 'Asistentul este oprit din Opțiuni.',
   permission_missing: 'Accesul la server nu este acordat. Deschideți Opțiuni și salvați din nou adresa.',
   unauthorized: 'Token invalid sau expirat. Verificați tokenul în Opțiuni.',
+  update_required: 'Versiunea extensiei este prea veche. Actualizați extensia.',
   not_found: 'Sugestia nu mai este disponibilă. Cereți o sugestie nouă.',
   superseded: 'Sugestia a fost înlocuită de una mai nouă. Cereți o sugestie nouă.',
   rate_limited: 'Prea multe cereri. Așteptați câteva secunde și încercați din nou.',
@@ -57,11 +61,29 @@ export function codeForStatus(status) {
   if (status === 404) return 'not_found';
   if (status === 409) return 'superseded';
   if (status === 413) return 'too_large';
+  if (status === 426) return 'update_required';
   if (status === 429) return 'rate_limited';
   if (status === 503) return 'unavailable';
   if (status >= 500) return 'server';
   if (status >= 400) return 'bad_request';
   return 'bad_response';
+}
+
+export function parseSemver(raw) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(raw ?? '').trim());
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+}
+
+export function isVersionOlder(current, minimum) {
+  const cur = parseSemver(current);
+  const min = parseSemver(minimum);
+  if (!min) return false;
+  if (!cur) return true;
+  for (let i = 0; i < 3; i += 1) {
+    if (cur[i] < min[i]) return true;
+    if (cur[i] > min[i]) return false;
+  }
+  return false;
 }
 
 // Accepts https anywhere and http only on loopback (local development).
@@ -148,10 +170,19 @@ export function buildSuggestBody(chat, messages) {
       id: str(m?.id, 300),
       direction: m?.direction === 'out' ? 'out' : 'in',
       text: str(m?.text, MAX_TEXT_LENGTH),
+      quoted_text: typeof m?.quoted_text === 'string' && m.quoted_text ? m.quoted_text.slice(0, MAX_QUOTED_LENGTH) : null,
       sent_at: typeof m?.sent_at === 'string' && m.sent_at ? m.sent_at : null,
       attachments: (Array.isArray(m?.attachments) ? m.attachments : [])
         .filter((a) => a && typeof a.upload_id === 'string' && a.upload_id)
+        .slice(0, 5)
         .map((a) => ({ upload_id: a.upload_id })),
+      unuploaded_attachments: (Array.isArray(m?.unuploaded_attachments) ? m.unuploaded_attachments : [])
+        .filter((u) => u && (u.kind === 'image' || u.kind === 'document'))
+        .slice(0, 5)
+        .map((u) => ({
+          kind: u.kind,
+          filename: typeof u.filename === 'string' && u.filename ? u.filename.slice(0, 256) : null,
+        })),
     })),
   };
 }
@@ -161,13 +192,18 @@ function mergeSignals(signal, timeoutMs) {
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
-export function createApiClient({ baseUrl, token, fetchImpl, timeouts = TIMEOUTS } = {}) {
+export function createApiClient({ baseUrl, token, version = DEFAULT_VERSION, fetchImpl, timeouts = TIMEOUTS } = {}) {
   const doFetch = fetchImpl || ((...args) => fetch(...args));
   const normalized = normalizeBaseUrl(baseUrl);
+  const extVersion = str(version, 40) || DEFAULT_VERSION;
 
   async function request(path, { method = 'GET', json, form, signal, timeout }) {
     if (!normalized.ok || !token) throw new AssistError('not_configured');
-    const headers = { [TOKEN_HEADER]: token, Accept: 'application/json' };
+    const headers = {
+      [TOKEN_HEADER]: token,
+      [VERSION_HEADER]: extVersion,
+      Accept: 'application/json',
+    };
     let body;
     if (json !== undefined) {
       headers['Content-Type'] = 'application/json';
@@ -213,7 +249,14 @@ export function createApiClient({ baseUrl, token, fetchImpl, timeouts = TIMEOUTS
     async ping({ signal } = {}) {
       const data = await request('/v1/assist/ping', { signal, timeout: timeouts.ping });
       if (data.ok !== true) throw new AssistError('bad_response');
-      return { ok: true, staff: str(data.staff, 120) };
+      const minVersion = str(data.min_extension_version, 40);
+      return {
+        ok: true,
+        staff: str(data.staff, 120),
+        backend_version: str(data.backend_version, 40),
+        min_extension_version: minVersion,
+        outdated: Boolean(minVersion && isVersionOlder(extVersion, minVersion)),
+      };
     },
 
     async suggest(chat, messages, { signal } = {}) {
@@ -262,7 +305,7 @@ export function createApiClient({ baseUrl, token, fetchImpl, timeouts = TIMEOUTS
       let response;
       try {
         response = await doFetch(url, {
-          headers: sameOrigin && token ? { [TOKEN_HEADER]: token } : {},
+          headers: sameOrigin && token ? { [TOKEN_HEADER]: token, [VERSION_HEADER]: extVersion } : {},
           signal: mergeSignals(signal, timeouts.image),
           credentials: 'omit',
           referrerPolicy: 'no-referrer',
