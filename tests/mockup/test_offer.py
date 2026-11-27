@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import datetime
 from decimal import Decimal as D
@@ -153,7 +154,7 @@ def test_clean_text_strips_emoji_controls_and_long_dashes():
 def test_offer_is_deterministic(tmp_path, mockup):
     a = make_offer_image(mockup, LINES, TERM, VALID, str(tmp_path / "a"))
     b = make_offer_image(mockup, LINES, TERM, VALID, str(tmp_path / "b"))
-    assert a.rsplit("/", 1)[1] == b.rsplit("/", 1)[1]
+    assert os.path.basename(a) == os.path.basename(b)
     assert open(a, "rb").read() == open(b, "rb").read()
     c = make_offer_image(mockup, LINES, TERM, datetime(2026, 12, 4), str(tmp_path / "a"))
     d = make_offer_image(None, LINES, TERM, VALID, str(tmp_path / "a"))

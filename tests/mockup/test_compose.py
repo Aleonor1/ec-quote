@@ -1,3 +1,4 @@
+import os
 import shutil
 
 import pytest
@@ -126,8 +127,8 @@ def test_deterministic_output(tmp_path, solid_design, service):
     first = service.make_mockup(solid_design, "borcan de miere", str(tmp_path / "a"))
     second = service.make_mockup(solid_design, "borcan de miere", str(tmp_path / "b"))
     again = MockupService().make_mockup(solid_design, "borcan de miere", str(tmp_path / "a"))
-    name = first.image_path.rsplit("/", 1)[1]
-    assert name == second.image_path.rsplit("/", 1)[1] and again.image_path == first.image_path
+    name = os.path.basename(first.image_path)
+    assert name == os.path.basename(second.image_path) and again.image_path == first.image_path
     assert open(first.image_path, "rb").read() == open(second.image_path, "rb").read()
     other = tmp_path / "alt.png"
     Image.new("RGB", (400, 400), (0, 90, 200)).save(other)

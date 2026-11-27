@@ -1,0 +1,79 @@
+# Test quality gate in CI: the same checks the sessions run (rules/test-quality-gate.md).
+# Copy to .github/workflows/quality-gate.yml in the project and replace every <placeholder>
+# with the values from .claude/skills-pack/bindings/PROJECT.md → Coverage / UI testing.
+# CI is often an area the human owns: the skills never install this file themselves.
+name: quality-gate
+
+on:
+  pull_request:
+
+concurrency:
+  group: quality-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # the diff gate needs the merge-base
+
+      # ---- toolchain: keep the one the project uses -------------------------
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"    # coverage_gate.py needs only the standard library
+
+      - name: Install
+        run: <Gates → Install, e.g. npm ci>
+
+      - name: Lint and types
+        run: |
+          <Gates → Lint>
+          <Gates → Types>
+
+      - name: Hygiene (no skip, focus, or silencing added)
+        run: bash .claude/skills-pack/orchestrate-delivery/scripts/test-hygiene.sh scan origin/${{ github.base_ref }}
+
+      - name: Tests with coverage, run twice (flaky is red)
+        run: bash .claude/skills-pack/orchestrate-delivery/scripts/test-hygiene.sh repeat 2 -- <Coverage → Coverage command>
+
+      - name: Coverage gate (diff >= minimum, global ratchet)
+        run: |
+          python3 .claude/skills-pack/orchestrate-delivery/scripts/coverage_gate.py \
+            --report <Coverage → Report path> \
+            --base origin/${{ github.base_ref }} \
+            --baseline .coverage-baseline.json \
+            --diff-min 95 --target 95 \
+            --include '<Source glob>' \
+            --exclude '<Exclude glob>' | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # ---- end-to-end with Playwright (drop when UI testing is (None)) -------
+      - name: Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Bring the stack up
+        run: <UI testing → Bring the stack up> &
+
+      - name: Seed
+        run: <UI testing → Seed>
+
+      - name: End-to-end
+        run: <Gates → End-to-end, e.g. npx playwright test>
+        env:
+          BASE_URL: <UI testing → App URL>
+          # test-account env vars from UI testing → Test accounts by role, as repository secrets:
+          # E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

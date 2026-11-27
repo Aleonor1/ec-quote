@@ -7,3 +7,9 @@ data/
 .env
 node_modules/
 extension/screenshots/
+
+# Claude skills pack run scratch
+.claude/skills-pack/**/.run-notes/
+.claude/skills-pack/.run-notes/
+playwright-report/
+test-results/
